@@ -30,3 +30,6 @@ __pycache__/
 *.log
 /monitoring-*.png
 /rate component.jpg
+
+# Source schema definitions
+!database/ecpay_audit_mysql84.sql
