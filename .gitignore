@@ -1,0 +1,32 @@
+# Private database connections
+server_settings.bat
+connection.settings.json
+**/builder.config.json
+.env
+.env.*
+!.env.example
+
+# Consumer data, reports, and database exports
+*.xlsx
+*.xlsb
+*.xls
+*.xlk
+*.sqlite
+*.sqlite-*
+*.db
+*.sql
+*_Zone.Identifier
+.report_cache/
+outputs/
+generated/
+sales feeder/
+
+# Temporary files and local tooling
+.codex_tmp/
+.codex_tmp_workbook/
+node_modules/
+__pycache__/
+*.pyc
+*.log
+/monitoring-*.png
+/rate component.jpg

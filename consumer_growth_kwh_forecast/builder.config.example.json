@@ -1,0 +1,38 @@
+{
+  "mysql": {
+    "host": "127.0.0.1",
+    "user": "report_user",
+    "password": ""
+  },
+  "months": [
+    "0726",
+    "0626",
+    "0526"
+  ],
+  "databases": [
+    {
+      "database": "dbsamelco",
+      "sheetName": "MAIN",
+      "leftLabel": "MAIN Non BAPA",
+      "rightLabel": "MAIN Non BAPA"
+    },
+    {
+      "database": "dbsamelco_catbalogan",
+      "sheetName": "CATBALOGAN",
+      "leftLabel": "CATB Non BAPA",
+      "rightLabel": "CATB Non BAPA"
+    },
+    {
+      "database": "dbsamelco_basey",
+      "sheetName": "BASEY",
+      "leftLabel": "Basey Non BAPA",
+      "rightLabel": "Basey Non BAPA"
+    },
+    {
+      "database": "dbsamelco_villareal",
+      "sheetName": "VILLAREAL",
+      "leftLabel": "Vila Non BAPA",
+      "rightLabel": "Villa Non BAPA"
+    }
+  ]
+}
