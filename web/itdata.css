@@ -6,3 +6,5 @@
 .workspace-database{display:flex;align-items:center;gap:12px;padding:0 20px 16px;flex-wrap:wrap}.workspace-database label{font-weight:600}.workspace-database select{min-width:220px;max-width:100%}
 
 .workspace-query-builder{padding:14px;background:var(--card,#f4f7fa);border:1px solid var(--line,#dce3e8);border-radius:8px}.workspace-query-builder>label{display:block;font-weight:600;margin-bottom:8px}#query-table{width:100%;max-width:100%}.workspace-query-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.workspace-query-builder p{font-size:12px;margin:12px 0 0}.workspace-query-buttons button{font-size:12px}
+
+.workspace-preview{margin-top:16px;padding:16px;border:1px solid var(--line,#dce3e8);border-radius:8px;background:var(--card,#f4f7fa)}.workspace-preview pre{white-space:pre-wrap;overflow-wrap:anywhere;padding:12px;background:#15242e;color:#edf7fc;border-radius:6px}.workspace-preview p{font-size:12px;overflow-wrap:anywhere}

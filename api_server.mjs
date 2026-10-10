@@ -1,3 +1,4 @@
+import { randomUUID, createHash } from 'node:crypto';
 import { validateWorkspaceQuery, parseWorkspaceOutput } from './mysql_workspace.mjs';
 import fs from "node:fs/promises";
 import { routeReport } from './route_reports.mjs';
@@ -740,6 +741,23 @@ async function workspaceSchema(database,connection='itProgram'){
   const tables=new Map();for(const [table,name,type] of data.rows){if(!tables.has(table))tables.set(table,{name:table,columns:[]});tables.get(table).columns.push({name,type})}
   return{connection,database,tables:[...tables.values()]};
 }
+const workspacePreviews=new Map();
+function workspaceFingerprint(connection){return createHash('sha256').update(JSON.stringify(workspaceConnection(connection))).digest('hex')}
+function previewWorkspaceQuery(input){
+  const connection=input.connection??'itProgram',c=workspaceConnection(connection),database=input.database??c.database,query=validateWorkspaceQuery(input.query);
+  if(typeof database!=='string'||!database||database.length>64||database.startsWith('-')||/[\x00-\x1f]/.test(database))throw new Error('Choose a valid database.');
+  const now=Date.now();for(const [key,value] of workspacePreviews)if(value.expires<=now)workspacePreviews.delete(key);
+  if(workspacePreviews.size>=1000)workspacePreviews.delete(workspacePreviews.keys().next().value);
+  const token=randomUUID(),expires=now+5*60*1000;
+  workspacePreviews.set(token,{connection,database,query,expires,fingerprint:workspaceFingerprint(connection)});
+  return{token,connection,database,query,limit:500,expiresAt:new Date(expires).toISOString()};
+}
+function consumeWorkspacePreview(input){
+  const value=workspacePreviews.get(input.previewToken);
+  if(!value||value.expires<=Date.now())throw new Error('Preview the query first. Previews expire after five minutes.');
+  if(value.connection!==(input.connection??'itProgram')||value.database!==input.database||value.query!==validateWorkspaceQuery(input.query)||value.fingerprint!==workspaceFingerprint(value.connection))throw new Error('The query or connection changed. Preview it again before running.');
+  workspacePreviews.delete(input.previewToken);return value;
+}
 async function workspaceQuery(value,database,connection='itProgram'){
   database??=workspaceConnection(connection).database;
   const query=validateWorkspaceQuery(value),start=Date.now();
@@ -949,8 +967,11 @@ const server=http.createServer(async(req,res)=>{
     if(u.pathname==='/api/itdata/workspace/schema'&&req.method==='GET'){
       try{return json(res,200,await workspaceSchema(u.searchParams.get('database')??undefined,u.searchParams.get('connection')??undefined))}catch(error){return json(res,400,{error:error.message})}
     }
+    if(u.pathname==='/api/itdata/workspace/preview'&&req.method==='POST'){
+      try{return json(res,200,previewWorkspaceQuery(await requestJson(req)))}catch(error){return json(res,400,{error:error.message})}
+    }
     if(u.pathname==='/api/itdata/workspace/query'&&req.method==='POST'){
-      try{const input=await requestJson(req);return json(res,200,await workspaceQuery(input.query,input.database,input.connection))}catch(error){return json(res,400,{error:error.message})}
+      try{const input=consumeWorkspacePreview(await requestJson(req));return json(res,200,await workspaceQuery(input.query,input.database,input.connection))}catch(error){return json(res,400,{error:error.message})}
     }
     if(u.pathname==='/api/itdata'){
       if(req.method!=='GET'){res.setHeader('Allow','GET');return json(res,405,{error:'This report supports read-only GET requests.'})}
