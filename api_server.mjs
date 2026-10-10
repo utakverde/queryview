@@ -1,3 +1,4 @@
+import { validateWorkspaceQuery, parseWorkspaceOutput } from './mysql_workspace.mjs';
 import fs from "node:fs/promises";
 import { routeReport } from './route_reports.mjs';
 import { delinquentReport } from './delinquent_report.mjs';
@@ -90,14 +91,15 @@ const areaNames = {"001":"Catbalogan","002":"Jiabong","003":"Motiong","004":"Par
 function sql(database, statement) {
   return execFileSync(mysqlExe, [...mysqlArgs, database, "-e", statement], { encoding: "utf8", windowsHide: true, maxBuffer: 50 * 1024 * 1024 }).trim();
 }
-function mysqlFromStdin(executable,args,statement){
+function mysqlFromStdin(executable,args,statement,timeoutMs=0){
   return new Promise((resolve,reject)=>{
     const child=spawn(executable,args,{windowsHide:true,stdio:['pipe','pipe','pipe']}),chunks=[],errors=[];let size=0,settled=false;
     const fail=error=>{if(settled)return;settled=true;reject(error)};
-    child.on('error',fail);
+    const timer=timeoutMs?setTimeout(()=>{child.kill();fail(new Error('Query timed out. Try a more specific filter.'))},timeoutMs):null;
+    child.on('error',error=>{clearTimeout(timer);fail(error)});
     child.stdout.on('data',chunk=>{size+=chunk.length;if(size>50*1024*1024){child.kill();fail(new Error('MySQL output exceeded 50 MB.'))}else chunks.push(chunk)});
     child.stderr.on('data',chunk=>errors.push(chunk));
-    child.on('close',code=>{if(settled)return;settled=true;const stderr=Buffer.concat(errors).toString('utf8').trim();if(code!==0)return reject(new Error(stderr||`MySQL exited with code ${code}.`));resolve(Buffer.concat(chunks).toString('utf8').trim())});
+    child.on('close',code=>{clearTimeout(timer);if(settled)return;settled=true;const stderr=Buffer.concat(errors).toString('utf8').trim();if(code!==0)return reject(new Error(stderr||`MySQL exited with code ${code}.`));resolve(Buffer.concat(chunks).toString('utf8').trim())});
     child.stdin.on('error',error=>{if(error.code!=='EPIPE')fail(error)});
     child.stdin.end(statement);
   });
@@ -710,6 +712,41 @@ async function itDataReport(params){
   return{database:connection.database,table:'usertb',columns:itDataColumns,rows,total,page:currentPage,pageSize,pages,search};
 }
 
+function workspaceConnections(){return[
+  {id:'billing',label:'Billing',enabled:true,host:mysqlHost,port:mysqlPort||3306,user:mysqlUser,password:mysqlPassword,executable:mysqlExe,database:databases[0]?.database},
+  {id:'membership',label:'Membership',enabled:true,host:membershipHost,port:membershipPort||3306,user:membershipUser,password:membershipPassword,executable:membershipExe,database:membershipDatabase.database},
+  {id:'ecpayAudit',label:'ECPay Audit',enabled:auditEnabled,host:auditHost,port:auditPort,user:auditUser,password:auditPassword,executable:auditExe,database:ecpayAuditDatabase},
+  {id:'itProgram',label:'IT Program',...itProgramConnection}
+]}
+function workspaceConnection(id='itProgram'){
+  const c=workspaceConnections().find(item=>item.id===id);
+  if(!c)throw new Error('Choose a configured connection.');
+  if(!c.enabled)throw new Error(`Enable the ${c.label} connection in Database Settings first.`);
+  return c;
+}
+async function workspaceSql(statement,database,connection='itProgram'){
+  const c=workspaceConnection(connection);database??=c.database;
+  if(typeof database!=='string'||!database||database.length>64||database.startsWith('-')||/[\x00-\x1f]/.test(database))throw new Error('Choose a valid database.');
+  const args=['-h',c.host,'-P',String(c.port),'-u',c.user,...(c.password?[`-p${c.password}`]:[]),'--batch','--default-character-set=utf8mb4',database];
+  return parseWorkspaceOutput(await mysqlFromStdin(c.executable,args,statement,20000));
+}
+async function workspaceDatabases(connection='itProgram'){
+  const c=workspaceConnection(connection),data=await workspaceSql("SHOW DATABASES;",'information_schema',connection);
+  return{connection,defaultDatabase:c.database,databases:data.rows.map(row=>row[0])};
+}
+async function workspaceSchema(database,connection='itProgram'){
+  database??=workspaceConnection(connection).database;
+  const data=await workspaceSql("SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME,ORDINAL_POSITION;",database,connection);
+  const tables=new Map();for(const [table,name,type] of data.rows){if(!tables.has(table))tables.set(table,{name:table,columns:[]});tables.get(table).columns.push({name,type})}
+  return{connection,database,tables:[...tables.values()]};
+}
+async function workspaceQuery(value,database,connection='itProgram'){
+  database??=workspaceConnection(connection).database;
+  const query=validateWorkspaceQuery(value),start=Date.now();
+  const result=await workspaceSql(`SELECT * FROM (${query}) AS workspace_result LIMIT 501;`,database,connection);
+  return{...result,connection,database,rows:result.rows.slice(0,500),truncated:result.rows.length>500,limit:500,durationMs:Date.now()-start};
+}
+
 function json(res,status,payload){const body=JSON.stringify(payload);res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Content-Length":Buffer.byteLength(body),"Cache-Control":"no-store"});res.end(body)}
 async function requestJson(req){let body='';for await(const chunk of req){body+=chunk;if(body.length>5*1024*1024)throw new Error('Request is too large.')}try{return JSON.parse(body||'{}')}catch{throw new Error('Invalid request data.')}}
 async function staticFile(res,file){
@@ -905,6 +942,16 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url.startsWith('/api/netmetering')){const p=new URL(req.url,'http://localhost').searchParams,database=p.get('database')??'all',billMonth=p.get('billMonth')??'';if(!(database==='all'||allowed.has(database))||(billMonth&&!/^(0[1-9]|1[0-2])\d{2}$/.test(billMonth)))return json(res,400,{error:'Invalid net-metering filters'});try{return json(res,200,await netMeteringReport(database,billMonth))}catch(error){console.error(error);return json(res,500,{error:'Unable to load billhistory_net and master_net.'})}}
   const u=new URL(req.url??"/","http://localhost");
   try{
+    if(u.pathname==='/api/itdata/workspace/connections'&&req.method==='GET')return json(res,200,{connections:workspaceConnections().map(({id,label,enabled,host,port})=>({id,label,enabled,host,port}))});
+    if(u.pathname==='/api/itdata/workspace/databases'&&req.method==='GET'){
+      try{return json(res,200,await workspaceDatabases(u.searchParams.get('connection')??undefined))}catch(error){return json(res,400,{error:error.message})}
+    }
+    if(u.pathname==='/api/itdata/workspace/schema'&&req.method==='GET'){
+      try{return json(res,200,await workspaceSchema(u.searchParams.get('database')??undefined,u.searchParams.get('connection')??undefined))}catch(error){return json(res,400,{error:error.message})}
+    }
+    if(u.pathname==='/api/itdata/workspace/query'&&req.method==='POST'){
+      try{const input=await requestJson(req);return json(res,200,await workspaceQuery(input.query,input.database,input.connection))}catch(error){return json(res,400,{error:error.message})}
+    }
     if(u.pathname==='/api/itdata'){
       if(req.method!=='GET'){res.setHeader('Allow','GET');return json(res,405,{error:'This report supports read-only GET requests.'})}
       try{return json(res,200,await itDataReport(u.searchParams))}catch(error){console.error('IT data report:',error.message);return json(res,400,{error:itProgramConnection.enabled?'Unable to load IT data. Check the saved IT connection and usertb table.':'Enable the optional IT Program connection in Database Settings first.'})}
