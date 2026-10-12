@@ -1,4 +1,5 @@
 import { randomUUID, createHash } from 'node:crypto';
+import { bapaReport } from './bapa_reports.mjs';
 import { validateWorkspaceQuery, parseWorkspaceOutput } from './mysql_workspace.mjs';
 import fs from "node:fs/promises";
 import { routeReport } from './route_reports.mjs';
@@ -695,6 +696,8 @@ async function saveNetMeteringBill(database,input){
 
 const itDataColumns=['Id','usercode','name','position','department','privilage','username','mobile_number','VL','SL','OL','OT','SLbal','OLbal','employmentdate','bioUID','privilagemenu','address','emailadd','area','basic','VLbal','profile_photo_mime','profile_photo_updated_at','registration_pending','SG'];
 async function itDataReport(params){
+  const showPasswords=params.get('showPasswords')==='1';
+  const columns=showPasswords?[...itDataColumns.slice(0,7),'password',...itDataColumns.slice(7)]:itDataColumns;
   const connection=itProgramConnection;
   if(!connection.enabled)throw new Error('Enable the optional IT Program connection in Database Settings first.');
   if(!/^[A-Za-z0-9_]{1,64}$/.test(connection.database))throw new Error('Check the IT Program database name in Settings.');
@@ -706,11 +709,11 @@ async function itDataReport(params){
   const where=search?` WHERE ${itDataColumns.map(column=>`LOCATE(LOWER(${literal}),LOWER(COALESCE(CAST(\`${column}\` AS CHAR),'')))>0`).join(' OR ')}`:'';
   const total=Number((await mysqlFromStdin(connection.executable,args,`SELECT COUNT(*) FROM usertb${where};`)).trim());
   const pages=Math.max(1,Math.ceil(total/pageSize)),currentPage=Math.min(page,pages);
-  const select=itDataColumns.map(column=>`HEX(CAST(\`${column}\` AS CHAR))`).join(',');
+  const select=columns.map(column=>`HEX(CAST(\`${column}\` AS CHAR))`).join(',');
   const output=await mysqlFromStdin(connection.executable,args,`SELECT ${select} FROM usertb${where} ORDER BY Id LIMIT ${pageSize} OFFSET ${(currentPage-1)*pageSize};`);
   const rowOutput=output.replace(/[\r\n]+$/,'');
   const rows=rowOutput?rowOutput.split(/\r?\n/).map(line=>line.split('\t').map(value=>value==='NULL'?null:Buffer.from(value,'hex').toString('utf8'))):[];
-  return{database:connection.database,table:'usertb',columns:itDataColumns,rows,total,page:currentPage,pageSize,pages,search};
+  return{database:connection.database,table:'usertb',columns,rows,total,page:currentPage,pageSize,pages,search};
 }
 
 function workspaceConnections(){return[
@@ -973,11 +976,14 @@ const server=http.createServer(async(req,res)=>{
     if(u.pathname==='/api/itdata/workspace/query'&&req.method==='POST'){
       try{const input=consumeWorkspacePreview(await requestJson(req));return json(res,200,await workspaceQuery(input.query,input.database,input.connection))}catch(error){return json(res,400,{error:error.message})}
     }
+    if(u.pathname==='/api/itdata/bapa-reports'&&req.method==='GET'){
+      try{return json(res,200,await bapaReport(databases,sqlAsync))}catch(error){console.error('BAPA reports:',error);return json(res,500,{error:'Unable to load BAPA reports from all four billing databases. Check the billing connection and try again.'})}
+    }
     if(u.pathname==='/api/itdata'){
       if(req.method!=='GET'){res.setHeader('Allow','GET');return json(res,405,{error:'This report supports read-only GET requests.'})}
       try{return json(res,200,await itDataReport(u.searchParams))}catch(error){console.error('IT data report:',error.message);return json(res,400,{error:itProgramConnection.enabled?'Unable to load IT data. Check the saved IT connection and usertb table.':'Enable the optional IT Program connection in Database Settings first.'})}
     }
-    if(req.method==='GET'&&['/itdata','/itdata.html','/itdata.js','/itdata.css'].includes(u.pathname))return staticFile(res,path.join(webDir,u.pathname==='/itdata'?'itdata.html':u.pathname.slice(1)));
+    if(req.method==='GET'&&['/itdata','/itdata.html','/itdata.js','/itdata.css','/bapa-excel.js'].includes(u.pathname))return staticFile(res,path.join(webDir,u.pathname==='/itdata'?'itdata.html':u.pathname.slice(1)));
     if(req.method==="GET"&&u.pathname==="/api/health")return json(res,200,{ok:true,service:"consumer-reports",reports:reports.length+3,portableStorage:"sqlite",sqliteFile:"portable_data/reporting_cache.sqlite"});
     if(req.method==="GET"&&u.pathname==="/api/connection-settings")return json(res,200,publicConnectionSettings());
     if(req.method==="POST"&&(u.pathname==="/api/connection-settings/test"||u.pathname==="/api/connection-settings")){

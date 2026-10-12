@@ -12,7 +12,7 @@ if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 New-Item -ItemType Directory -Path $stage, (Join-Path $stage 'runtime'), (Join-Path $stage 'portable_data'), (Join-Path $stage 'consumer_growth_kwh_forecast'), (Join-Path $stage 'generated') -Force | Out-Null
 
 $files = @(
-  'api_server.mjs', 'mysql_workspace.mjs', 'route_reports.mjs', 'delinquent_report.mjs', 'feeder_report.mjs', 'engineering_assets.mjs', 'feeder-mapping.settings.json', 'substation-capacity.settings.json', 'README.md', 'INSTALL.bat', 'CONFIGURE.bat', 'OPEN_REPORTS.bat',
+  'api_server.mjs', 'bapa_reports.mjs', 'mysql_workspace.mjs', 'route_reports.mjs', 'delinquent_report.mjs', 'feeder_report.mjs', 'engineering_assets.mjs', 'feeder-mapping.settings.json', 'substation-capacity.settings.json', 'README.md', 'INSTALL.bat', 'CONFIGURE.bat', 'OPEN_REPORTS.bat',
   'STOP_REPORTS.bat', 'start_all_servers.bat', 'sync_remote_data.bat', 'sync_remote_data.mjs'
 )
 foreach ($file in $files) { Copy-Item -LiteralPath (Join-Path $root $file) -Destination (Join-Path $stage $file) -Force }
