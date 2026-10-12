@@ -6,7 +6,7 @@ The separate graph dashboard is available at `/visual-report` and uses the cache
 
 The collection calendar and supplier-payment planner are available as a separate report at `/cash-flow`.
 
-The ITDA page includes a **BAPA Reports** tab at `/itdata#bapa-reports`. It lists all mother-meter accounts from `master_bm` across the four billing databases and counts distinct individual accounts from `master_bi` by Area and Book. Shared mother-meter routes are marked; office totals count individuals once and include unmatched individuals separately.
+The Infotech Data Reports page includes a **BAPA Reports** tab at `/itdata#bapa-reports`. It lists all mother-meter accounts from `master_bm` across the four billing databases and counts distinct individual accounts from `master_bi` by Area and Book. Shared mother-meter routes are marked; office totals count individuals once and include unmatched individuals separately.
 
 The rate-component allocation and reconciliation report is available at `/collection-components`.
 
