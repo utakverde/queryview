@@ -47,7 +47,7 @@ for(const [index,tab] of tabs.entries()){
 }
 window.addEventListener('hashchange',tabFromHash);
 
-let workspaceResult=null,schemaLoaded=false,queryBusy=false,workspaceTables=[],queryPreview=null;
+let workspaceResult=null,activeWorkspaceResult=0,schemaLoaded=false,queryBusy=false,workspaceTables=[],queryPreview=null;
 const quoteIdentifier=value=>'`'+value.replaceAll('`','``')+'`';
 async function workspaceRequest(url,options){const response=await fetch(url,{cache:'no-store',...options}),data=await response.json();if(!response.ok)throw new Error(data.error||'Request failed.');return data}
 async function loadSchema(){
@@ -57,15 +57,23 @@ async function loadSchema(){
   }catch(error){$('#schema-status').textContent=error.message;schemaLoaded=false}finally{$('#schema-refresh').disabled=false}
 }
 async function runQuery(){
-  if(queryBusy)return;if(!queryPreview||queryPreview.source!==JSON.stringify(currentQuery())||Date.now()>=Date.parse(queryPreview.expiresAt)){invalidatePreview();$('#query-status').textContent='Preview this query before running it.';return}const approved={...currentQuery(),previewToken:queryPreview.token};invalidatePreview();if(!$('#workspace-database').value){$('#query-status').textContent='Choose an available database first.';return}queryBusy=true;$('#workspace-database').disabled=true;$('#workspace-connection').disabled=true;$('#query-run').disabled=true;$('#query-export').disabled=true;$('#query-status').textContent='Running query…';$('#query-columns').replaceChildren();$('#query-rows').replaceChildren();workspaceResult=null;
-  try{const data=await workspaceRequest('/api/itdata/workspace/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(approved)});workspaceResult=data;const header=document.createElement('tr');for(const column of data.columns)header.append(cell('th',column));$('#query-columns').replaceChildren(header);for(const values of data.rows){const row=document.createElement('tr');for(const value of values)row.append(cell('td',value));$('#query-rows').append(row)}$('#query-status').textContent=`${data.database} · ${data.rows.length} rows · ${data.durationMs} ms${data.truncated?' · Results limited to 500 rows; narrow your query.':''}`;$('#query-export').disabled=!data.columns.length;
+  if(queryBusy)return;if(!queryPreview||queryPreview.source!==JSON.stringify(currentQuery())||Date.now()>=Date.parse(queryPreview.expiresAt)){invalidatePreview();$('#query-status').textContent='Preview this query before running it.';return}const approved={...currentQuery(),previewToken:queryPreview.token};invalidatePreview();if(!$('#workspace-database').value){$('#query-status').textContent='Choose an available database first.';return}queryBusy=true;$('#workspace-database').disabled=true;$('#workspace-connection').disabled=true;$('#query-run').disabled=true;$('#query-export').disabled=true;$('#query-status').textContent='Running query…';$('#query-columns').replaceChildren();$('#query-rows').replaceChildren();$('#query-result-tabs').replaceChildren();workspaceResult=null;
+  try{const data=await workspaceRequest('/api/itdata/workspace/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(approved)});workspaceResult=data;activeWorkspaceResult=0;const tabs=$('#query-result-tabs');tabs.replaceChildren(...data.results.map((result,index)=>{const button=cell('button',`Result ${index+1} · ${result.rows.length} rows`);button.type='button';button.addEventListener('click',()=>showWorkspaceResult(index));return button}));tabs.hidden=data.results.length<2;showWorkspaceResult(0);
   }catch(error){$('#query-status').textContent=error.message}finally{queryBusy=false;$('#query-run').disabled=true;$('#workspace-database').disabled=false;$('#workspace-connection').disabled=false}
+}
+function showWorkspaceResult(index){
+  const result=workspaceResult?.results[index];if(!result)return;activeWorkspaceResult=index;
+  const header=document.createElement('tr');for(const column of result.columns)header.append(cell('th',column));$('#query-columns').replaceChildren(header);
+  $('#query-rows').replaceChildren(...result.rows.map(values=>{const row=document.createElement('tr');for(const value of values)row.append(cell('td',value));return row}));
+  for(const [position,button] of [...$('#query-result-tabs').children].entries())button.setAttribute('aria-pressed',String(position===index));
+  $('#query-status').textContent=`${workspaceResult.database} · Result ${index+1} of ${workspaceResult.results.length} · ${result.rows.length} rows · ${workspaceResult.durationMs} ms${result.truncated?' · Results limited to 500 rows; narrow your query.':''}`;
+  $('#query-export').disabled=!result.columns.length;
 }
 let savedQueries=[];try{const saved=JSON.parse(localStorage.getItem('itdata-workspace-queries')||'[]');if(Array.isArray(saved))savedQueries=saved.filter(item=>typeof item.name==='string'&&typeof item.query==='string')}catch{}
 function renderSaved(){const select=$('#query-saved');select.replaceChildren(new Option('Choose a saved query',''));savedQueries.forEach((item,index)=>select.add(new Option(item.name,String(index))))}
 $('#query-save').addEventListener('click',()=>{const name=prompt('Query name');if(!name?.trim())return;const item={name:name.trim(),query:$('#query-editor').value,connection:$('#workspace-connection').value,database:$('#workspace-database').value},index=savedQueries.findIndex(value=>value.name===item.name),next=[...savedQueries];if(index<0)next.push(item);else next[index]=item;try{localStorage.setItem('itdata-workspace-queries',JSON.stringify(next));savedQueries=next;renderSaved();$('#query-status').textContent='Query saved in this browser.'}catch{$('#query-status').textContent='Unable to save query in this browser.'}});
 $('#query-saved').addEventListener('change',async()=>{if($('#query-saved').value!==''){const saved=savedQueries[Number($('#query-saved').value)];invalidatePreview();$('#query-editor').value=saved.query;try{if(saved.connection&&saved.connection!==$('#workspace-connection').value){const option=[...$('#workspace-connection').options].find(option=>option.value===saved.connection&&!option.disabled);if(!option)throw new Error('The saved connection is unavailable.');$('#workspace-connection').value=saved.connection;clearWorkspace();await loadDatabases()}if(saved.database&&[...$('#workspace-database').options].some(option=>option.value===saved.database)){$('#workspace-database').value=saved.database;databaseChanged()}}catch(error){$('#query-status').textContent=error.message}}});
-$('#query-export').addEventListener('click',()=>{if(!workspaceResult)return;const csv=[workspaceResult.columns,...workspaceResult.rows].map(row=>row.map(value=>'"'+String(value??'').replaceAll('"','""')+'"').join(',')).join('\r\n'),url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='mysqlworkspace-results.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+$('#query-export').addEventListener('click',()=>{const result=workspaceResult?.results[activeWorkspaceResult];if(!result)return;const csv=[result.columns,...result.rows].map(row=>row.map(value=>'"'+String(value??'').replaceAll('"','""')+'"').join(',')).join('\r\n'),url=URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`mysqlworkspace-result-${activeWorkspaceResult+1}.csv`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
 $('#query-run').addEventListener('click',runQuery);$('#query-editor').addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();previewQuery()}});$('#schema-refresh').addEventListener('click',loadSchema);
 $('#mysqlworkspace-tab').addEventListener('click',()=>{if(!schemaLoaded)loadSchema()});window.addEventListener('hashchange',()=>{if(location.hash==='#mysqlworkspace'&&!schemaLoaded)loadSchema()});renderSaved();if(location.hash==='#mysqlworkspace')loadSchema();
 
@@ -80,7 +88,7 @@ async function loadDatabases(){
   select.disabled=!data.databases.length;
   if(!data.databases.length)throw new Error('No databases are available for this connection.');
 }
-function databaseChanged(){invalidatePreview();schemaLoaded=false;workspaceResult=null;$('#query-columns').replaceChildren();$('#query-rows').replaceChildren();$('#query-export').disabled=true;$('#query-status').textContent='Database changed. Choose a table or update your SQL before running.';loadSchema()}
+function databaseChanged(){invalidatePreview();schemaLoaded=false;workspaceResult=null;$('#query-columns').replaceChildren();$('#query-rows').replaceChildren();$('#query-result-tabs').replaceChildren();$('#query-export').disabled=true;$('#query-status').textContent='Database changed. Choose a table or update your SQL before running.';loadSchema()}
 $('#workspace-database').addEventListener('change',databaseChanged);
 
 async function loadConnections(){
@@ -89,7 +97,7 @@ async function loadConnections(){
   select.value=data.connections.find(item=>item.id==='itProgram'&&item.enabled)?.id||data.connections.find(item=>item.enabled)?.id||'';select.disabled=!select.value;
   if(!select.value)throw new Error('Enable a connection in Database Settings first.');
 }
-function clearWorkspace(){invalidatePreview();$('#database-count').textContent='';resetQueryTables();schemaLoaded=false;workspaceResult=null;$('#workspace-database').replaceChildren(new Option('Choose a database',''));$('#workspace-database').disabled=true;$('#schema-tables').replaceChildren();$('#query-columns').replaceChildren();$('#query-rows').replaceChildren();$('#query-export').disabled=true}
+function clearWorkspace(){invalidatePreview();$('#database-count').textContent='';resetQueryTables();schemaLoaded=false;workspaceResult=null;$('#workspace-database').replaceChildren(new Option('Choose a database',''));$('#workspace-database').disabled=true;$('#schema-tables').replaceChildren();$('#query-columns').replaceChildren();$('#query-rows').replaceChildren();$('#query-result-tabs').replaceChildren();$('#query-export').disabled=true}
 $('#workspace-connection').addEventListener('change',async()=>{clearWorkspace();$('#workspace-connection').disabled=true;$('#schema-status').textContent='Connecting…';try{await loadDatabases();await loadSchema();$('#query-status').textContent='Connection changed. Choose a table or update your SQL before running.'}catch(error){$('#schema-status').textContent=error.message}finally{$('#workspace-connection').disabled=false}});
 
 function resetQueryTables(){workspaceTables=[];$('#query-table').replaceChildren(new Option('Choose a table',''));$('#query-table').disabled=true;updateTemplateButtons()}
@@ -113,7 +121,7 @@ async function previewQuery(){
   if(queryBusy)return;invalidatePreview();const input=currentQuery();
   if(!input.connection||!input.database){$('#query-status').textContent='Choose a connection and database first.';return}
   $('#query-preview-target').textContent=`${$('#workspace-connection').selectedOptions[0].textContent} → ${input.database}`;$('#query-preview-sql').textContent=input.query;$('#query-preview-panel').hidden=false;$('#query-preview').disabled=true;$('#query-status').textContent='Validating preview…';
-  try{const data=await workspaceRequest('/api/itdata/workspace/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});if(JSON.stringify(currentQuery())!==JSON.stringify(input))return;queryPreview={...data,source:JSON.stringify(input)};$('#query-run').disabled=false;$('#query-status').textContent='Preview ready. Review it, then click Run previewed query.'}catch(error){$('#query-status').textContent=error.message}finally{$('#query-preview').disabled=false}
+  try{const data=await workspaceRequest('/api/itdata/workspace/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)});if(JSON.stringify(currentQuery())!==JSON.stringify(input))return;queryPreview={...data,source:JSON.stringify(input)};$('#query-run').disabled=false;$('#query-status').textContent=`Preview ready for ${data.statementCount} SELECT statement${data.statementCount===1?'':'s'}. Review, then run.`}catch(error){$('#query-status').textContent=error.message}finally{$('#query-preview').disabled=false}
 }
 $('#query-preview').addEventListener('click',previewQuery);$('#query-editor').addEventListener('input',invalidatePreview);
 

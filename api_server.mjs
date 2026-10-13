@@ -1,6 +1,6 @@
 import { randomUUID, createHash } from 'node:crypto';
 import { bapaReport } from './bapa_reports.mjs';
-import { validateWorkspaceQuery, parseWorkspaceOutput } from './mysql_workspace.mjs';
+import { validateWorkspaceQueries, parseWorkspaceOutput } from './mysql_workspace.mjs';
 import fs from "node:fs/promises";
 import { routeReport } from './route_reports.mjs';
 import { delinquentReport } from './delinquent_report.mjs';
@@ -756,25 +756,28 @@ async function workspaceSchema(database,connection='itProgram'){
 const workspacePreviews=new Map();
 function workspaceFingerprint(connection){return createHash('sha256').update(JSON.stringify(workspaceConnection(connection))).digest('hex')}
 function previewWorkspaceQuery(input){
-  const connection=input.connection??'itProgram',c=workspaceConnection(connection),database=input.database??c.database,query=validateWorkspaceQuery(input.query);
+  const connection=input.connection??'itProgram',c=workspaceConnection(connection),database=input.database??c.database,queries=validateWorkspaceQueries(input.query);
   if(typeof database!=='string'||!database||database.length>64||database.startsWith('-')||/[\x00-\x1f]/.test(database))throw new Error('Choose a valid database.');
   const now=Date.now();for(const [key,value] of workspacePreviews)if(value.expires<=now)workspacePreviews.delete(key);
   if(workspacePreviews.size>=1000)workspacePreviews.delete(workspacePreviews.keys().next().value);
   const token=randomUUID(),expires=now+5*60*1000;
-  workspacePreviews.set(token,{connection,database,query,expires,fingerprint:workspaceFingerprint(connection)});
-  return{token,connection,database,query,limit:500,expiresAt:new Date(expires).toISOString()};
+  workspacePreviews.set(token,{connection,database,queries,expires,fingerprint:workspaceFingerprint(connection)});
+  return{token,connection,database,statementCount:queries.length,limit:500,expiresAt:new Date(expires).toISOString()};
 }
 function consumeWorkspacePreview(input){
   const value=workspacePreviews.get(input.previewToken);
   if(!value||value.expires<=Date.now())throw new Error('Preview the query first. Previews expire after five minutes.');
-  if(value.connection!==(input.connection??'itProgram')||value.database!==input.database||value.query!==validateWorkspaceQuery(input.query)||value.fingerprint!==workspaceFingerprint(value.connection))throw new Error('The query or connection changed. Preview it again before running.');
+  if(value.connection!==(input.connection??'itProgram')||value.database!==input.database||JSON.stringify(value.queries)!==JSON.stringify(validateWorkspaceQueries(input.query))||value.fingerprint!==workspaceFingerprint(value.connection))throw new Error('The query or connection changed. Preview it again before running.');
   workspacePreviews.delete(input.previewToken);return value;
 }
 async function workspaceQuery(value,database,connection='itProgram'){
   database??=workspaceConnection(connection).database;
-  const query=validateWorkspaceQuery(value),start=Date.now();
-  const result=await workspaceSql(`SELECT * FROM (${query}) AS workspace_result LIMIT 501;`,database,connection);
-  return{...result,connection,database,rows:result.rows.slice(0,500),truncated:result.rows.length>500,limit:500,durationMs:Date.now()-start};
+  const queries=validateWorkspaceQueries(value),start=Date.now(),results=[];
+  for(const [index,query] of queries.entries()){
+    try{const result=await workspaceSql(`SELECT * FROM (${query}) AS workspace_result LIMIT 501;`,database,connection);results.push({columns:result.columns,rows:result.rows.slice(0,500),truncated:result.rows.length>500,limit:500})}
+    catch(error){throw new Error(`Statement ${index+1}: ${error.message}`)}
+  }
+  return{connection,database,results,statementCount:results.length,durationMs:Date.now()-start};
 }
 
 function json(res,status,payload){const body=JSON.stringify(payload);res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Content-Length":Buffer.byteLength(body),"Cache-Control":"no-store"});res.end(body)}
@@ -983,7 +986,7 @@ const server=http.createServer(async(req,res)=>{
       try{return json(res,200,previewWorkspaceQuery(await requestJson(req)))}catch(error){return json(res,400,{error:error.message})}
     }
     if(u.pathname==='/api/itdata/workspace/query'&&req.method==='POST'){
-      try{const input=consumeWorkspacePreview(await requestJson(req));return json(res,200,await workspaceQuery(input.query,input.database,input.connection))}catch(error){return json(res,400,{error:error.message})}
+      try{const input=consumeWorkspacePreview(await requestJson(req));return json(res,200,await workspaceQuery(input.queries.join(';'),input.database,input.connection))}catch(error){return json(res,400,{error:error.message})}
     }
     if(u.pathname==='/api/itdata/bapa-reports'&&req.method==='GET'){
       try{return json(res,200,await bapaReport(databases,sqlAsync))}catch(error){console.error('BAPA reports:',error);return json(res,500,{error:'Unable to load BAPA reports from all four billing databases. Check the billing connection and try again.'})}
