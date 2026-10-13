@@ -46,6 +46,15 @@ const auditSettings=savedConnection.ecpayAudit??{};let auditEnabled=auditSetting
 let membershipHost=savedConnection.membership?.host||(process.env.MEMBERSHIP_MYSQL_HOST??mysqlHost),membershipPort=savedConnection.membership?.port||(process.env.MEMBERSHIP_MYSQL_PORT??mysqlPort),membershipUser=savedConnection.membership?.user||(process.env.MEMBERSHIP_MYSQL_USER??mysqlUser),membershipPassword=savedConnection.membership?.password??process.env.MEMBERSHIP_MYSQL_PASSWORD??mysqlPassword,membershipExe=savedConnection.membership?.executable||(process.env.MEMBERSHIP_MYSQL_EXE??mysqlExe);
 let membershipMysqlArgs=["-h",membershipHost,...(membershipPort?["-P",String(membershipPort)]:[]),"-u",membershipUser,`-p${membershipPassword}`,"-N","-B"];
 const execFileAsync = promisify(execFile);
+async function checkMysqlConnection(executable,args,label){
+  try{return await execFileAsync(executable,args,{encoding:'utf8',windowsHide:true,maxBuffer:2*1024*1024,timeout:15000})}
+  catch(error){
+    const detail=String(error.stderr||error.message||'');
+    if(/ERROR 1045\b/.test(detail))throw new Error(`${label}: MySQL rejected the username, password, or client host. Check the credentials and the account's host access on the MySQL server.`);
+    if(/ERROR (2002|2003|2004)\b|ETIMEDOUT|ECONNREFUSED|ENOTFOUND/.test(detail))throw new Error(`${label}: Could not reach the MySQL server. Check its host, port, and network access.`);
+    throw new Error(`${label}: MySQL connection test failed. Check the server settings and MySQL logs.`);
+  }
+}
 
 let itProgramConnection={enabled:false,host:'192.168.1.99',port:3306,user:'root',password:'',executable:mysqlExe,database:'it_program',...savedConnection.itProgram};
 function publicConnectionSettings(){return{host:mysqlHost,port:Number(mysqlPort||3306),user:mysqlUser,executable:mysqlExe,hasPassword:Boolean(mysqlPassword),databases:databases.map(item=>({...item})),itProgram:{...itProgramConnection,password:undefined,hasPassword:Boolean(itProgramConnection.password)},membership:{...membershipDatabase,host:membershipHost,port:Number(membershipPort||3306),user:membershipUser,executable:membershipExe,hasPassword:Boolean(membershipPassword)},ecpayAudit:{enabled:auditEnabled,database:ecpayAuditDatabase,host:auditHost,port:auditPort,user:auditUser,executable:auditExe,hasPassword:Boolean(auditPassword)}}}
@@ -61,16 +70,16 @@ function candidateConnection(input){
 }
 async function testConnection(settings){
   const args=["-h",settings.host,"-P",String(settings.port),"-u",settings.user,...(settings.password?[`-p${settings.password}`]:[]),"-N","-B","-e","SELECT SCHEMA_NAME FROM information_schema.SCHEMATA;"];
-  const {stdout}=await execFileAsync(settings.executable,args,{encoding:'utf8',windowsHide:true,maxBuffer:2*1024*1024,timeout:15000});
+  const {stdout}=await checkMysqlConnection(settings.executable,args,'Billing connection');
   const available=new Set(stdout.trim().split(/\r?\n/).filter(Boolean)),missing=settings.databases.filter(item=>!available.has(item.database)).map(item=>item.database);
   if(missing.length)throw new Error(`Connected, but these databases were not found: ${missing.join(', ')}`);
   const membershipArgs=["-h",settings.membership.host,"-P",String(settings.membership.port),"-u",settings.membership.user,...(settings.membership.password?[`-p${settings.membership.password}`]:[]),"-N","-B","-e",`SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${settings.membership.database}';`];
-  const membershipResult=await execFileAsync(settings.membership.executable,membershipArgs,{encoding:'utf8',windowsHide:true,maxBuffer:2*1024*1024,timeout:15000});
+  const membershipResult=await checkMysqlConnection(settings.membership.executable,membershipArgs,'Membership connection');
   if(!membershipResult.stdout.trim())throw new Error(`Connected to the Membership server, but database ${settings.membership.database} was not found.`);
-  if(settings.ecpayAudit.enabled){const auditArgs=['-h',settings.ecpayAudit.host,'-P',String(settings.ecpayAudit.port),'-u',settings.ecpayAudit.user,...(settings.ecpayAudit.password?[`-p${settings.ecpayAudit.password}`]:[]),'-N','-B','-e','SELECT VERSION();'];const auditResult=await execFileAsync(settings.ecpayAudit.executable,auditArgs,{encoding:'utf8',windowsHide:true,maxBuffer:2*1024*1024,timeout:15000});if(!auditResult.stdout.trim().startsWith('8.4.'))throw new Error(`The ECPay audit connection is not MySQL 8.4 (reported ${auditResult.stdout.trim()||'unknown'}).`)}
+  if(settings.ecpayAudit.enabled){const auditArgs=['-h',settings.ecpayAudit.host,'-P',String(settings.ecpayAudit.port),'-u',settings.ecpayAudit.user,...(settings.ecpayAudit.password?[`-p${settings.ecpayAudit.password}`]:[]),'-N','-B','-e','SELECT VERSION();'];const auditResult=await checkMysqlConnection(settings.ecpayAudit.executable,auditArgs,'ECPay audit connection');if(!auditResult.stdout.trim().startsWith('8.4.'))throw new Error(`The ECPay audit connection is not MySQL 8.4 (reported ${auditResult.stdout.trim()||'unknown'}).`)}
   if(settings.itProgram?.enabled){
     const it=settings.itProgram,args=['-h',it.host,'-P',String(it.port),'-u',it.user,...(it.password?[`-p${it.password}`]:[]),'-N','-B','-e',`SELECT SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${it.database}';`];
-    const result=await execFileAsync(it.executable,args,{encoding:'utf8',windowsHide:true,maxBuffer:2*1024*1024,timeout:15000});
+    const result=await checkMysqlConnection(it.executable,args,'IT Program connection');
     if(!result.stdout.trim())throw new Error(`Connected to the IT Program server, but database ${it.database} was not found.`);
   }
   return{ok:true,message:`Connections successful. Billing and Membership are available${settings.ecpayAudit.enabled?', and the ECPay audit server is MySQL 8.4':''}${settings.itProgram?.enabled?', and IT Program is available':''}.`};
@@ -990,6 +999,16 @@ const server=http.createServer(async(req,res)=>{
       try{const settings=candidateConnection(await requestJson(req)),result=await testConnection(settings);if(u.pathname.endsWith('/test'))return json(res,200,result);await fs.writeFile(connectionSettingsFile,JSON.stringify(settings,null,2),{encoding:'utf8',mode:0o600});applyConnection(settings);if(auditEnabled)await ensureEcpayAuditSchema();await buildMonthCatalog();return json(res,200,{...result,settings:publicConnectionSettings()})}catch(error){return json(res,400,{error:error.message||'Unable to connect with these settings.'})}
     }
     if(req.method==="GET"&&u.pathname==="/api/catalog")return json(res,200,{databases,reports,months});
+    if(req.method==="GET"&&u.pathname==="/api/area-books"){
+      const database=u.searchParams.get('database')??'',area=u.searchParams.get('area')??'';
+      if(!allowed.has(database)||!area||area.length>100)return json(res,400,{error:'Select a valid database and area.'});
+      const areaExpression="COALESCE(NULLIF(TRIM(Area), ''), 'UNKNOWN')";
+      const statement=`SELECT COALESCE(NULLIF(TRIM(Book), ''), 'UNKNOWN'), COUNT(*), COUNT(NULLIF(TRIM(Address), '')), COUNT(DISTINCT NULLIF(TRIM(Address), '')) FROM master WHERE ${areaExpression}='${escapeSql(area)}' GROUP BY COALESCE(NULLIF(TRIM(Book), ''), 'UNKNOWN') ORDER BY 1;`;
+      const bookRows=parse(await sqlAsync(database,statement),['book','consumers','withAddress','distinctAddresses']).map(row=>num(row,['consumers','withAddress','distinctAddresses']));
+      const total=bookRows.reduce((sum,row)=>sum+row.consumers,0);
+      bookRows.forEach(row=>{row.coverage=row.consumers?row.withAddress/row.consumers:0;row.share=total?row.consumers/total:0});
+      return json(res,200,{rows:bookRows});
+    }
     if(req.method==="GET"&&u.pathname==="/api/bill-months")return json(res,200,await getMonthCatalog(u.searchParams.get("refresh")==="1"));
     if(req.method==='GET'&&u.pathname==='/api/ecpay/unpaid'){
       const database=u.searchParams.get('database')??databases[0]?.database,connStatus=u.searchParams.get('connStatus')??'all',billMonth=u.searchParams.get('billMonth')??'';if(!database||(database!=='all'&&!allowed.has(database))||!['all','A','D'].includes(connStatus)||!/^(0[1-9]|1[0-2])\d{2}$/.test(billMonth))return json(res,400,{error:'Select a valid ECPay office, bill month, and connection status.'});return json(res,200,await ecpayUnpaid(database,connStatus,billMonth));
