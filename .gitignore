@@ -1,6 +1,7 @@
 # Private database connections
 server_settings.bat
 connection.settings.json
+connection.history.json
 **/builder.config.json
 .env
 .env.*

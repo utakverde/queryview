@@ -5,6 +5,10 @@
 .actions input:not([type="file"]) { min-width: 205px; padding: .72rem; border: 1px solid #adb9b2; border-radius: 8px; background: #fff; color: #17221d; font-weight: 600; }
 .due-date-option { display: flex; align-items: center; gap: .5rem; margin-top: .7rem; color: #3f4a44; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .due-date-option input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: #155f46; }
+.unpaid-options { display: flex; align-items: center; gap: .7rem 1rem; flex-wrap: wrap; }
+.due-date-days { display: inline-flex; align-items: center; gap: .45rem; margin-top: .7rem; color: #3f4a44; font-size: .78rem; font-weight: 700; }
+.due-date-days input { width: 4.5rem; padding: .35rem .45rem; border: 1px solid #adb9b2; border-radius: 6px; font: inherit; }
+.due-date-days select { padding: .35rem .45rem; border: 1px solid #adb9b2; border-radius: 6px; background: #fff; font: inherit; }
 .actions select option { background: #fff; color: #17221d; }
 .actions button, .file-button { border: 0; border-radius: 8px; background: #155f46; color: #fff; padding: .78rem 1rem; font: 600 .85rem "DM Sans", sans-serif; cursor: pointer; }
 .actions button:disabled { opacity: .55; cursor: not-allowed; }

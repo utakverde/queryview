@@ -30,6 +30,7 @@ function readPortableCache(key){try{const row=portableDb.prepare("SELECT generat
 function writePortableCache(key,category,payload){try{portableDb.prepare("INSERT OR REPLACE INTO cache_entry(cache_key,category,generated_at,payload) VALUES(?,?,?,?)").run(key,category,payload.generatedAt,JSON.stringify(payload))}catch(error){console.error("Unable to write portable SQLite cache:",error)}}
 const config = JSON.parse(await fs.readFile(path.join(rootDir, "consumer_growth_kwh_forecast", "builder.config.json"), "utf8"));
 const connectionSettingsFile = path.join(rootDir, "connection.settings.json");
+const connectionHistoryFile = path.join(rootDir, "connection.history.json");
 const feederMappingSettingsFile = path.join(rootDir, 'feeder-mapping.settings.json');
 const substationCapacitySettingsFile = path.join(rootDir, 'substation-capacity.settings.json');
 let savedConnection = {};
@@ -85,6 +86,10 @@ async function testConnection(settings){
   return{ok:true,message:`Connections successful. Billing and Membership are available${settings.ecpayAudit.enabled?', and the ECPay audit server is MySQL 8.4':''}${settings.itProgram?.enabled?', and IT Program is available':''}.`};
 }
 function applyConnection(settings){itProgramConnection=settings.itProgram;mysqlHost=settings.host;mysqlPort=settings.port;mysqlUser=settings.user;mysqlPassword=settings.password;mysqlExe=settings.executable;databases=settings.databases;membershipDatabase={database:settings.membership.database,label:settings.membership.label};membershipHost=settings.membership.host;membershipPort=settings.membership.port;membershipUser=settings.membership.user;membershipPassword=settings.membership.password;membershipExe=settings.membership.executable;auditEnabled=settings.ecpayAudit.enabled;ecpayAuditDatabase=settings.ecpayAudit.database;auditHost=settings.ecpayAudit.host;auditPort=settings.ecpayAudit.port;auditUser=settings.ecpayAudit.user;auditPassword=settings.ecpayAudit.password;auditExe=settings.ecpayAudit.executable;allowed=new Set(databases.map(item=>item.database));mysqlArgs=["-h",mysqlHost,"-P",String(mysqlPort),"-u",mysqlUser,`-p${mysqlPassword}`,"-N","-B"];membershipMysqlArgs=["-h",membershipHost,"-P",String(membershipPort),"-u",membershipUser,`-p${membershipPassword}`,"-N","-B"];auditMysqlArgs=['-h',auditHost,'-P',String(auditPort),'-u',auditUser,`-p${auditPassword}`,'-N','-B']}
+async function readConnectionHistory(){try{const history=JSON.parse(await fs.readFile(connectionHistoryFile,'utf8'));return Array.isArray(history)?history:[]}catch(error){if(error.code!=='ENOENT')console.error('Unable to read connection history:',error);return[]}}
+function connectionHistoryList(history){return history.map(({id,savedAt,settings})=>({id,savedAt,host:settings.host,port:settings.port,user:settings.user,databases:settings.databases.map(item=>item.label)}))}
+async function rememberConnection(settings){const history=await readConnectionHistory(),fingerprint=JSON.stringify(settings),existing=history.find(item=>JSON.stringify(item.settings)===fingerprint);const entry={id:existing?.id||randomUUID(),savedAt:new Date().toISOString(),settings};const updated=[entry,...history.filter(item=>item.id!==entry.id)].slice(0,10);await fs.writeFile(connectionHistoryFile,JSON.stringify(updated,null,2),{encoding:'utf8',mode:0o600});return connectionHistoryList(updated)}
+async function saveConnection(settings){await fs.writeFile(connectionSettingsFile,JSON.stringify(settings,null,2),{encoding:'utf8',mode:0o600});applyConnection(settings);if(auditEnabled)await ensureEcpayAuditSchema();await buildMonthCatalog()}
 const reports = [
   { id: "billing-summary", label: "Billing Summary (build_summary)", description: "Batch summary breakdown by office, source, bill month, area/book and rate: paid and unpaid bills, kWh and amounts" },
   { id: "area-address", label: "Consumers by Area", description: "Master consumer records and address coverage" },
@@ -564,27 +569,29 @@ async function ecpayArrears(database){
   const pending=sqlAsync(database,`SELECT AccountNumber,TotalBill FROM billhistory WHERE (flag_paid IS NULL OR flag_paid<>'Y') AND TotalBill>0 AND COALESCE(RateCode,'') NOT IN ('B','L')${ecpayAreaClause(database)}`).then(output=>{const rows=new Map();for(const row of parse(output,['accountNumber','totalBill']))rows.set(row.accountNumber,(rows.get(row.accountNumber)??0)+Number(row.totalBill||0));ecpayArrearsCache.set(database,{generatedAt:Date.now(),rows});return rows}).finally(()=>ecpayArrearsRefreshes.delete(database));
   ecpayArrearsRefreshes.set(database,pending);return pending;
 }
-async function buildEcpayUnpaid(database,connStatus='all',billMonth=''){
+async function buildEcpayUnpaid(database,connStatus='all',billMonth='',surchargeBillMonth=''){
   if(database==='all'){
-    const reports=await Promise.all(databases.map(office=>buildEcpayUnpaid(office.database,connStatus,billMonth)));
+    const reports=await Promise.all(databases.map(office=>buildEcpayUnpaid(office.database,connStatus,billMonth,surchargeBillMonth)));
     const rows=reports.flatMap(report=>report.rows).sort((a,b)=>a.accountNumber.localeCompare(b.accountNumber,undefined,{numeric:true})||a.billMonth.localeCompare(b.billMonth));
-    return{generatedAt:new Date().toISOString(),database:'all',label:'All offices',billMonth,collectorCode:'EZPay id',rows,totals:{records:rows.length,totalBill:rows.reduce((sum,row)=>sum+row.totalBill,0)}};
+    return{generatedAt:new Date().toISOString(),database:'all',label:'All offices',billMonth,surchargeBillMonth,collectorCode:'EZPay id',rows,totals:{records:rows.length,totalBill:rows.reduce((sum,row)=>sum+row.totalBill,0),surcharge:rows.reduce((sum,row)=>sum+(row.surcharge||0),0)}};
   }
   const office=databases.find(item=>item.database===database);if(!office)throw new Error('Select a valid office database.');
   const statusJoin=` LEFT JOIN master ecpay_master ON ecpay_master.Code=billhistory.Code`;
   const currentNonBapaClause=ecpayNonBapaClause.replace('RateCode','billhistory.RateCode'),currentAreaClause=ecpayAreaClause(database).replace('Area','billhistory.Area');
   const monthClause=billMonth?` AND billhistory.BillMonth='${billMonth}'`:` AND billhistory.PresentReadingDate>=DATE_SUB(CURDATE(),INTERVAL 10 DAY)`,currentIndex=billMonth?'BillMonthIndex':'PresReadDateIndex';
   const currentSql=`SELECT billhistory.AccountNumber,billhistory.Name,billhistory.BillMonth,DATE_FORMAT(DATE_ADD(billhistory.PresentReadingDate,INTERVAL 10 DAY),'%m/%d/%Y'),DATE_FORMAT(billhistory.PresentReadingDate,'%Y-%m-%d'),COALESCE(ecpay_master.ConnStatus,'') FROM billhistory FORCE INDEX (${currentIndex})${statusJoin} WHERE (billhistory.flag_paid IS NULL OR billhistory.flag_paid<>'Y') AND billhistory.TotalBill>0 AND CHAR_LENGTH(TRIM(COALESCE(billhistory.AccountNumber,'')))>=8 AND TRIM(billhistory.AccountNumber) REGEXP '^[0-9]+$'${monthClause}${currentNonBapaClause}${currentAreaClause} ORDER BY billhistory.AccountNumber,billhistory.PresentReadingDate DESC,billhistory.Entry DESC`;
-  const [currentOutput,arrears]=await Promise.all([sqlAsync(database,currentSql),ecpayArrears(database)]);
+  const surchargeSql=surchargeBillMonth?`SELECT AccountNumber,COALESCE(SUM(TotalBill),0) FROM billhistory FORCE INDEX (BillMonthIndex) WHERE BillMonth='${surchargeBillMonth}' AND (flag_paid IS NULL OR flag_paid<>'Y') AND TotalBill>0 AND DATE_ADD(PresentReadingDate,INTERVAL 10 DAY)<=CURDATE()${ecpayNonBapaClause}${ecpayAreaClause(database)} GROUP BY AccountNumber`:null;
+  const [currentOutput,arrears,surchargeOutput]=await Promise.all([sqlAsync(database,currentSql),ecpayArrears(database),surchargeSql?sqlAsync(database,surchargeSql):Promise.resolve('')]);
+  const surchargeByAccount=new Map(parse(surchargeOutput,['accountNumber','billTotal']).map(row=>[row.accountNumber,Math.round(Number(row.billTotal||0)*2)/100]));
   const candidates=parse(currentOutput,['accountNumber','name','billMonth','dueDate','readingDate','connectionStatus']).map(row=>({...row,totalBill:arrears.get(row.accountNumber)??0})).filter(row=>row.totalBill>0&&(connStatus==='all'||row.connectionStatus===connStatus));
   const latestByAccount=new Map();for(const row of candidates)if(!latestByAccount.has(row.accountNumber))latestByAccount.set(row.accountNumber,row);
-  const rows=[...latestByAccount.values()].map(({readingDate,connectionStatus,...row})=>row).filter(row=>row.totalBill>0);
-  return{generatedAt:new Date().toISOString(),database,label:office.label,billMonth,collectorCode:'EZPay id',rows,totals:{records:rows.length,totalBill:rows.reduce((sum,row)=>sum+row.totalBill,0)}};
+  const rows=[...latestByAccount.values()].map(({readingDate,connectionStatus,...row})=>({...row,surcharge:surchargeByAccount.get(row.accountNumber)||0})).filter(row=>row.totalBill>0);
+  return{generatedAt:new Date().toISOString(),database,label:office.label,billMonth,surchargeBillMonth,collectorCode:'EZPay id',rows,totals:{records:rows.length,totalBill:rows.reduce((sum,row)=>sum+row.totalBill,0),surcharge:rows.reduce((sum,row)=>sum+row.surcharge,0)}};
 }
-async function ecpayUnpaid(database,connStatus='all',billMonth=''){
-  const key=`${database}|${connStatus}|${billMonth}`,portableKey=`ecpay:unpaid:${key}`;
+async function ecpayUnpaid(database,connStatus='all',billMonth='',surchargeBillMonth=''){
+  const key=`${database}|${connStatus}|${billMonth}|${surchargeBillMonth}`,portableKey=`ecpay:unpaid:${key}`;
   let cached=ecpayCache.get(key);if(!cached){cached=readPortableCache(portableKey);if(cached)ecpayCache.set(key,cached)}
-  const refresh=async()=>{if(ecpayRefreshes.has(key))return ecpayRefreshes.get(key);const pending=buildEcpayUnpaid(database,connStatus,billMonth).then(payload=>{ecpayCache.set(key,payload);writePortableCache(portableKey,'ecpay-unpaid',payload);return payload}).finally(()=>ecpayRefreshes.delete(key));ecpayRefreshes.set(key,pending);return pending};
+  const refresh=async()=>{if(ecpayRefreshes.has(key))return ecpayRefreshes.get(key);const pending=buildEcpayUnpaid(database,connStatus,billMonth,surchargeBillMonth).then(payload=>{ecpayCache.set(key,payload);writePortableCache(portableKey,'ecpay-unpaid',payload);return payload}).finally(()=>ecpayRefreshes.delete(key));ecpayRefreshes.set(key,pending);return pending};
   if(cached){const stale=Date.now()-Date.parse(cached.generatedAt)>cacheTtlMs;if(stale)setImmediate(()=>refresh().catch(console.error));return{...cached,cached:true,refreshing:stale}}
   return{...await refresh(),cached:false,refreshing:false};
 }
@@ -998,8 +1005,12 @@ const server=http.createServer(async(req,res)=>{
     if(req.method==='GET'&&['/itdata','/itdata.html','/itdata.js','/itdata.css','/bapa-excel.js'].includes(u.pathname))return staticFile(res,path.join(webDir,u.pathname==='/itdata'?'itdata.html':u.pathname.slice(1)));
     if(req.method==="GET"&&u.pathname==="/api/health")return json(res,200,{ok:true,service:"consumer-reports",reports:reports.length+3,portableStorage:"sqlite",sqliteFile:"portable_data/reporting_cache.sqlite"});
     if(req.method==="GET"&&u.pathname==="/api/connection-settings")return json(res,200,publicConnectionSettings());
+    if(req.method==="GET"&&u.pathname==="/api/connection-settings/history")return json(res,200,{history:connectionHistoryList(await readConnectionHistory())});
+    if(req.method==="POST"&&u.pathname==="/api/connection-settings/restore"){
+      try{const {id}=await requestJson(req),entry=(await readConnectionHistory()).find(item=>item.id===id);if(!entry)return json(res,404,{error:'Saved connection settings were not found.'});const result=await testConnection(entry.settings);await saveConnection(entry.settings);return json(res,200,{...result,message:'Previous successful settings loaded and applied.',settings:publicConnectionSettings(),history:await rememberConnection(entry.settings)})}catch(error){return json(res,400,{error:error.message||'Unable to restore connection settings.'})}
+    }
     if(req.method==="POST"&&(u.pathname==="/api/connection-settings/test"||u.pathname==="/api/connection-settings")){
-      try{const settings=candidateConnection(await requestJson(req)),result=await testConnection(settings);if(u.pathname.endsWith('/test'))return json(res,200,result);await fs.writeFile(connectionSettingsFile,JSON.stringify(settings,null,2),{encoding:'utf8',mode:0o600});applyConnection(settings);if(auditEnabled)await ensureEcpayAuditSchema();await buildMonthCatalog();return json(res,200,{...result,settings:publicConnectionSettings()})}catch(error){return json(res,400,{error:error.message||'Unable to connect with these settings.'})}
+      try{const settings=candidateConnection(await requestJson(req)),result=await testConnection(settings);if(u.pathname.endsWith('/test'))return json(res,200,{...result,history:await rememberConnection(settings)});await saveConnection(settings);return json(res,200,{...result,settings:publicConnectionSettings(),history:await rememberConnection(settings)})}catch(error){return json(res,400,{error:error.message||'Unable to connect with these settings.'})}
     }
     if(req.method==="GET"&&u.pathname==="/api/catalog")return json(res,200,{databases,reports,months});
     if(req.method==="GET"&&u.pathname==="/api/area-books"){
@@ -1014,7 +1025,7 @@ const server=http.createServer(async(req,res)=>{
     }
     if(req.method==="GET"&&u.pathname==="/api/bill-months")return json(res,200,await getMonthCatalog(u.searchParams.get("refresh")==="1"));
     if(req.method==='GET'&&u.pathname==='/api/ecpay/unpaid'){
-      const database=u.searchParams.get('database')??databases[0]?.database,connStatus=u.searchParams.get('connStatus')??'all',billMonth=u.searchParams.get('billMonth')??'';if(!database||(database!=='all'&&!allowed.has(database))||!['all','A','D'].includes(connStatus)||!/^(0[1-9]|1[0-2])\d{2}$/.test(billMonth))return json(res,400,{error:'Select a valid ECPay office, bill month, and connection status.'});return json(res,200,await ecpayUnpaid(database,connStatus,billMonth));
+      const database=u.searchParams.get('database')??databases[0]?.database,connStatus=u.searchParams.get('connStatus')??'all',billMonth=u.searchParams.get('billMonth')??'',surchargeBillMonth=u.searchParams.get('surchargeBillMonth')??'';if(!database||(database!=='all'&&!allowed.has(database))||!['all','A','D'].includes(connStatus)||!/^(0[1-9]|1[0-2])\d{2}$/.test(billMonth)||(surchargeBillMonth&&!/^(0[1-9]|1[0-2])\d{2}$/.test(surchargeBillMonth)))return json(res,400,{error:'Select a valid ECPay office, bill month, surcharge month, and connection status.'});return json(res,200,await ecpayUnpaid(database,connStatus,billMonth,surchargeBillMonth));
     }
     if(req.method==='POST'&&u.pathname==='/api/ecpay/detect'){
       try{return json(res,200,await detectEcpayOffices(await requestJson(req)))}catch(error){console.error(error);return json(res,400,{error:error.message||'Unable to detect ECPay account offices.'})}
