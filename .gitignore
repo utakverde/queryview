@@ -18,6 +18,7 @@ connection.history.json
 *.sql
 *_Zone.Identifier
 .report_cache/
+portable_data/mobile_transfer/
 outputs/
 generated/
 sales feeder/

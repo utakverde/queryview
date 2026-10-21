@@ -13,6 +13,9 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
+import { createMobileTransferStore } from './mobile_transfer.mjs';
+import { createLifelinePosting } from './lifeline_posting.mjs';
+import { listFubcsDevices, pullFubcsDatabase, pushFubcsDatabase } from './fubcs_adb.mjs';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const webDir = path.join(rootDir, "web");
@@ -21,8 +24,11 @@ const portableDataDir = path.join(rootDir, "portable_data");
 await fs.mkdir(cacheDir, { recursive: true });
 await fs.mkdir(portableDataDir, { recursive: true });
 const portableDb = new DatabaseSync(path.join(portableDataDir, "reporting_cache.sqlite"));
+const mobileTransferDir = path.join(portableDataDir, 'mobile_transfer');
+const mobileTransferStore = createMobileTransferStore(portableDb);
 portableDb.exec("PRAGMA journal_mode=DELETE; PRAGMA synchronous=NORMAL; CREATE TABLE IF NOT EXISTS cache_entry (cache_key TEXT PRIMARY KEY, category TEXT NOT NULL, generated_at TEXT NOT NULL, payload TEXT NOT NULL); CREATE INDEX IF NOT EXISTS idx_cache_entry_category ON cache_entry(category); CREATE TABLE IF NOT EXISTS lifeline_paid_batch (batch_id TEXT PRIMARY KEY, bill_month TEXT NOT NULL, paid_date TEXT NOT NULL, reference TEXT NOT NULL, requested_count INTEGER NOT NULL, affected_count INTEGER NOT NULL, created_at TEXT NOT NULL, details TEXT NOT NULL); CREATE TABLE IF NOT EXISTS manual_sales_entry (id INTEGER PRIMARY KEY AUTOINCREMENT, database_name TEXT NOT NULL, bill_month TEXT NOT NULL, entry_type TEXT NOT NULL, area TEXT NOT NULL, rate_code TEXT NOT NULL, grid INTEGER NOT NULL, amount REAL NOT NULL, note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS ecpay_post_log (id INTEGER PRIMARY KEY AUTOINCREMENT, batch_id TEXT NOT NULL, created_at TEXT NOT NULL, status TEXT NOT NULL, reason TEXT NOT NULL, database_name TEXT NOT NULL, office TEXT NOT NULL, account_number TEXT NOT NULL, consumer_name TEXT NOT NULL, bill_month TEXT NOT NULL, amount REAL NOT NULL, date_paid TEXT NOT NULL, bill_count INTEGER NOT NULL DEFAULT 0, updated_count INTEGER NOT NULL DEFAULT 0); CREATE INDEX IF NOT EXISTS idx_ecpay_post_log_created ON ecpay_post_log(created_at DESC);");
 portableDb.exec("CREATE TABLE IF NOT EXISTS collector_channel_override (database_name TEXT NOT NULL, collector_code TEXT NOT NULL, classification TEXT NOT NULL, PRIMARY KEY(database_name,collector_code));");
+portableDb.exec("CREATE TABLE IF NOT EXISTS membership_post_batch (batch_id TEXT PRIMARY KEY, posted_at TEXT NOT NULL, database_name TEXT NOT NULL, payment_date TEXT NOT NULL, or_number TEXT NOT NULL, item_count INTEGER NOT NULL, amount REAL NOT NULL, details TEXT NOT NULL);");
 try{portableDb.exec("ALTER TABLE manual_sales_entry ADD COLUMN account_status TEXT NOT NULL DEFAULT 'A'")}catch(error){if(!String(error.message).includes('duplicate column name'))throw error}
 try{portableDb.exec("ALTER TABLE ecpay_post_log ADD COLUMN source_date_paid TEXT NOT NULL DEFAULT ''")}catch(error){if(!String(error.message).includes('duplicate column name'))throw error}
 try{portableDb.exec("ALTER TABLE ecpay_post_log ADD COLUMN source_reference TEXT NOT NULL DEFAULT ''")}catch(error){if(!String(error.message).includes('duplicate column name'))throw error}
@@ -320,36 +326,41 @@ async function collectionMonitoringArea(database,billMonth,table,area,dateFrom,d
 
 const componentCache=new Map();
 const componentFields={
-  generation:["GenSysCharge","HostCommCharge","ForexCharge","FPCA","PowerActRateRed","GEA_ALL","REX"],
-  transmission:["TCDemandCharge","TCTransSystemCharge","AncillaryServiceCharge","AncillaryServiceDemandCharge"],
+  generation:["GenSysCharge","PowerActRateRed"],
+  transmission:["TCTransSystemCharge","TCDemandCharge","AncillaryServiceCharge","AncillaryServiceDemandCharge"],
   systemLoss:["SystemLossCharge","SysLossRefund"],
-  distribution:["DCDemandCharge","DCDistributionCharge"],
+  distribution:["DCDistributionCharge","DCDemandCharge"],
   supply:["SCRetCustCharge","SCSupplySysCharge"],
   metering:["MCRetailCustCharge","MCSystemCharge"],
-  universal:["UCNPCStrandedDebts","UCNPCStrandedContCost","UCDUStrandedContCost","UCME","UCEqTaxesAndRoyalties","UCEC","UCCrossSubRemoval"],
-  otherCharges:["LifelineCollect","LifelineDiscSubs","senior_citizen_subsidy","senior_citizen_disc","ICCrossSubsidyCharge","MCC_Substation","MCC","RealPropertyTax","LoanCondo","LoanCondoRetail","TransformerRental","OCAmount1","OCTotal1","OCAmount2","OCTotal2","OCAmount3","OCTotal3","OCAmount4","OCTotal4","OCAmount5","OCTotal5","OCAmount6","OCTotal6","OCAmount7","OCTotal7","OCAmount8","OCTotal8","OCAmount9","OCTotal9","OCAmount10","OCTotal10"],
-  vat:["EVAT","EVAT_GenCharge","EVAT_SystemLoss","EVAT_Trans_Charge","EVAT_Dist_Charge","EVAT_OtherVat"],
-  adjustments:["FitAll","RPPD","ICCS","TrueUp","UCME_Redci","GenRefund","TransRefund","SeniorRefund"],
+  generationOther:["HostCommCharge","ForexCharge","FPCA"],
+  otherCharges:["MCC_Substation","MCC","LifelineCollect","LifelineDiscSubs","senior_citizen_subsidy","senior_citizen_disc","ICCrossSubsidyCharge","RealPropertyTax","LoanCondo","LoanCondoRetail","TransformerRental","OCAmount1","OCTotal1","OCAmount2","OCTotal2","OCAmount3","OCTotal3","OCAmount4","OCTotal4","OCAmount5","OCTotal5","OCAmount6","OCTotal6","OCAmount7","OCTotal7","OCAmount8","OCTotal8","OCAmount9","OCTotal9","OCAmount10","OCTotal10"],
+  governmentVat:["EVAT","EVAT_GenCharge","EVAT_SystemLoss","EVAT_Trans_Charge","EVAT_Dist_Charge","EVAT_OtherVat"],
+  passThroughTaxes:["RealPropertyTax"],
+  universal:["UCNPCStrandedDebts","UCNPCStrandedContCost","UCDUStrandedContCost","UCME","UCEqTaxesAndRoyalties","UCEC","UCCrossSubRemoval","UCME_Redci"],
+  fitAll:["FitAll"],
+  recRate:["REX"],
+  geaAll:["GEA_ALL"],
+  adjustments:["RPPD","ICCS","TrueUp","UCME_Redci","GenRefund","TransRefund","SeniorRefund"],
 };
 const unbundledComponentFields=[...new Set(Object.values(componentFields).flat())];
 const componentSum=(fields)=>`COALESCE(SUM(${fields.map((field)=>`COALESCE(${field},0)`).join("+")}),0)`;
 const operationFields=["ICCrossSubsidyCharge","LifelineDiscSubs","senior_citizen_disc","senior_citizen_subsidy","LifelineCollect","RPPD","ICCS","TrueUp","RealPropertyTax","LoanCondo","LoanCondoRetail","TransformerRental","OCAmount1","OCTotal1","OCAmount2","OCTotal2","OCAmount3","OCTotal3"];
-const universalAllocationFields=[...componentFields.universal,"FitAll","UCME_Redci"];
+const universalAllocationFields=[...new Set([...componentFields.universal,"FitAll","UCME_Redci"])];
 async function buildCollectionComponents(dateFrom,dateTo,databaseFilter,groupFilter){
   const selectedDatabases=databaseFilter==="all"?databases:databases.filter(({database})=>database===databaseFilter),tables=groupFilter==="regular"?["billhistory"]:groupFilter==="bapa"?["billhistory_bm"]:["billhistory","billhistory_bm"];
   const groups=await Promise.all(selectedDatabases.map(async({database,label})=>{
     const tableQuery=(table)=>{const rates=table==="billhistory"?"'R','C','S','P','I','H','V'":"'B','L'",expressions=[...Object.values(componentFields).map((fields)=>componentSum(fields)),componentSum(["PowerActRateRed"]),componentSum(["EVAT_GenCharge"]),componentSum(["EVAT_SystemLoss"]),componentSum(["EVAT_Trans_Charge"]),componentSum(["EVAT_Dist_Charge"]),componentSum(["EVAT_OtherVat"]),componentSum(["MCC"]),componentSum(["MCC_Substation"]),componentSum(operationFields),componentSum(universalAllocationFields),...unbundledComponentFields.map((field)=>componentSum([field]))];return`SELECT '${table}' source,date_paid,COALESCE(NULLIF(TRIM(RateCode),''),'UNKNOWN') rate_code,COUNT(entry) bills,COALESCE(SUM(KilowattHour),0) kwh,COALESCE(SUM(TotalBill),0) total_bill,${expressions.map((expression,index)=>`${expression} c${index+1}`).join(",")} FROM ${table} WHERE flag_paid='Y' AND date_paid BETWEEN '${dateFrom}' AND '${dateTo}' AND RateCode IN (${rates}) GROUP BY date_paid,RateCode`};
     const aliased=tables.map(tableQuery).join(" UNION ALL ");
-    const expressionCount=20+unbundledComponentFields.length,finalStatement=`SELECT source,date_paid,rate_code,SUM(bills),SUM(kwh),SUM(total_bill),${Array.from({length:expressionCount},(_,index)=>`SUM(c${index+1})`).join(",")} FROM (${aliased}) x GROUP BY source,date_paid,rate_code ORDER BY date_paid,source,rate_code;`;
+    const expressionCount=Object.keys(componentFields).length+10+unbundledComponentFields.length,finalStatement=`SELECT source,date_paid,rate_code,SUM(bills),SUM(kwh),SUM(total_bill),${Array.from({length:expressionCount},(_,index)=>`SUM(c${index+1})`).join(",")} FROM (${aliased}) x GROUP BY source,date_paid,rate_code ORDER BY date_paid,source,rate_code;`;
     const keys=["table","date","rateCode","bills","kwh","totalBill",...Object.keys(componentFields),"powerAct","evatGeneration","evatSystemLoss","evatTransmission","evatDistribution","evatOther","rfsc","capex","operationBase","universalAllocation",...unbundledComponentFields];
     return parse(await sqlAsync(database,finalStatement),keys).map((row)=>{num(row,keys.slice(3));const systemLossWithVat=row.SystemLossCharge+row.evatSystemLoss,generationAllocation=row.generation-row.GEA_ALL-row.REX+row.evatGeneration+systemLossWithVat*.7,transmissionAllocation=row.transmission-row.AncillaryServiceCharge-row.AncillaryServiceDemandCharge+row.evatTransmission+systemLossWithVat*.3,dsmAllocation=row.distribution+row.supply+row.metering,operationAllocation=row.operationBase+row.evatDistribution+row.evatOther,totalAllocation=generationAllocation+transmissionAllocation+dsmAllocation+operationAllocation+row.rfsc+row.capex+row.universalAllocation,componentDetails=Object.fromEntries(unbundledComponentFields.map((field)=>[field,row[field]]));return{database:label,...row,componentDetails,group:row.table==="billhistory_bm"?"BAPA":"Regular",allocations:{generation:generationAllocation,transmission:transmissionAllocation,dsm:dsmAllocation,operation:operationAllocation,rfsc:row.rfsc,capex:row.capex,universal:row.universalAllocation,total:totalAllocation,balance:row.totalBill-totalAllocation}}});
   }));
   const rows=groups.flat(),sumField=(field)=>rows.reduce((total,row)=>total+row[field],0),sumAllocation=(field)=>rows.reduce((total,row)=>total+row.allocations[field],0),payload={generatedAt:new Date().toISOString(),dateFrom,dateTo,database:databaseFilter,group:groupFilter,rows,totals:{bills:sumField("bills"),kwh:sumField("kwh"),totalBill:sumField("totalBill"),components:Object.fromEntries(Object.keys(componentFields).map((field)=>[field,sumField(field)])),allocations:Object.fromEntries(["generation","transmission","dsm","operation","rfsc","capex","universal","total","balance"].map((field)=>[field,sumAllocation(field)]))}};
-  const key=`v6|${dateFrom}|${dateTo}|${databaseFilter}|${groupFilter}`;componentCache.set(key,{payload});writePortableCache(`components:${key}`,"collection-components",payload);return{...payload,cached:false,storage:"sqlite"};
+  const key=`v8|${dateFrom}|${dateTo}|${databaseFilter}|${groupFilter}`;componentCache.set(key,{payload});writePortableCache(`components:${key}`,"collection-components",payload);return{...payload,cached:false,storage:"sqlite"};
 }
 async function collectionComponents(dateFrom,dateTo,databaseFilter,groupFilter,forceRefresh=false){
   if(forceRefresh)return buildCollectionComponents(dateFrom,dateTo,databaseFilter,groupFilter);
-  const key=`v6|${dateFrom}|${dateTo}|${databaseFilter}|${groupFilter}`,cached=componentCache.get(key)?.payload??readPortableCache(`components:${key}`);if(cached){const stale=Date.now()-Date.parse(cached.generatedAt)>cacheTtlMs;if(stale)setImmediate(()=>buildCollectionComponents(dateFrom,dateTo,databaseFilter,groupFilter).catch(console.error));return{...cached,cached:true,refreshing:stale,storage:"sqlite"}}return buildCollectionComponents(dateFrom,dateTo,databaseFilter,groupFilter);
+  const key=`v8|${dateFrom}|${dateTo}|${databaseFilter}|${groupFilter}`,cached=componentCache.get(key)?.payload??readPortableCache(`components:${key}`);if(cached){const stale=Date.now()-Date.parse(cached.generatedAt)>cacheTtlMs;if(stale)setImmediate(()=>buildCollectionComponents(dateFrom,dateTo,databaseFilter,groupFilter).catch(console.error));return{...cached,cached:true,refreshing:stale,storage:"sqlite"}}return buildCollectionComponents(dateFrom,dateTo,databaseFilter,groupFilter);
 }
 
 const collectorCache=new Map();
@@ -389,7 +400,7 @@ async function collectorReport(dateFrom,dateTo,forceRefresh=false){
 
 async function buildLifelineCollectionReport(dateFrom,dateTo){
   const groups=await Promise.all(databases.map(async({database,label})=>{
-    const statement=`SELECT b.Area,COUNT(b.Code),COALESCE(SUM(b.KilowattHour),0),COALESCE(SUM(b.LifelineDiscSubs),0) FROM billhistory b INNER JOIN master m ON m.Code=b.Code AND m.flagLifeline<>'1' WHERE b.date_paid BETWEEN '${dateFrom}' AND '${dateTo}' AND b.LifelineDiscSubs>0 GROUP BY b.Area ORDER BY b.Area`;
+    const statement=`SELECT b.Area,COUNT(b.Code),COALESCE(SUM(b.KilowattHour),0),COALESCE(SUM(b.LifelineDiscSubs),0) FROM billhistory b INNER JOIN master m ON m.Code=b.Code AND COALESCE(m.flagLifeline,0)<>1 WHERE b.date_paid BETWEEN '${dateFrom}' AND '${dateTo}' AND b.LifelineDiscSubs>0 GROUP BY b.Area ORDER BY b.Area`;
     return parse(await sqlAsync(database,statement),['area','count','kilowattHour','amount']).map(row=>({sourceDb:database,office:label,areaName:areaNames[row.area]??row.area,...num(row,['count','kilowattHour','amount'])}));
   }));
   const areaMap=new Map();
@@ -434,6 +445,82 @@ async function nonPowerBillReport(dateFrom,dateTo,forceRefresh=false){
   const key=`v3|${membershipHost}|${membershipDatabase.database}|${dateFrom}|${dateTo}`;
   if(!forceRefresh){const cached=nonPowerBillCache.get(key)??readPortableCache(`non-power-bill:${key}`);if(cached){nonPowerBillCache.set(key,cached);const stale=Date.now()-Date.parse(cached.generatedAt)>cacheTtlMs;if(stale)setImmediate(()=>buildNonPowerBillReport(dateFrom,dateTo).catch(console.error));return{...cached,cached:true,refreshing:stale,storage:'sqlite'}}}
   return buildNonPowerBillReport(dateFrom,dateTo);
+}
+
+const membershipPostingPreviews=new Map();
+function membershipPostingKey(row){return `${row.applyId}|${row.category}`}
+function membershipPostingRows(where,maxRows=201){
+  const parts=nonPowerBillFields.map(([category,amountField,dateField,orField,nameField])=>{
+    const amount=`CAST(NULLIF(REPLACE(TRIM(CAST(p.\`${amountField}\` AS CHAR)),',',''),'') AS DECIMAL(14,2))`;
+    const item=nameField?`COALESCE(NULLIF(TRIM(p.\`${nameField}\`),''),'${category}')`:`'${category}'`;
+    return `SELECT p.ApplyID apply_id,COALESCE(p.accountnumber,'') account_number,'${category}' category,${item} item_name,${amount} amount,COALESCE(CAST(p.\`${dateField}\` AS CHAR),'') payment_date,COALESCE(p.\`${orField}\`,'') or_number FROM mempayments p WHERE ${where} AND COALESCE(${amount},0)>0`;
+  });
+  return `SELECT x.apply_id,x.account_number,CONCAT_WS(' ',NULLIF(TRIM(m.FirstName),''),NULLIF(TRIM(m.LastName),'')) member_name,x.category,x.item_name,x.amount,x.payment_date,x.or_number FROM (${parts.join(' UNION ALL ')}) x LEFT JOIN membershipdetais m ON m.ApplyID=x.apply_id ORDER BY x.apply_id,x.category LIMIT ${maxRows}`;
+}
+async function membershipPostingSearch(search){
+  const value=String(search??'').trim();
+  if(value.length<2||value.length>80)throw new Error('Enter at least two characters of an application ID or account number.');
+  const exact=/^\d{1,10}$/.test(value)?`p.ApplyID=${Number(value)} OR `:'';
+  const where=`(${exact}p.accountnumber LIKE '%${escapeSql(value)}%')`;
+  const raw=parse(await membershipSqlAsync(membershipDatabase.database,membershipPostingRows(where)),['applyId','accountNumber','memberName','category','itemName','amount','paymentDate','orNumber']);
+  return{database:membershipDatabase.database,rows:raw.slice(0,200).map(row=>({...row,applyId:Number(row.applyId),amount:Number(row.amount)})),truncated:raw.length>200};
+}
+async function membershipPostingSelected(selected){
+  if(!Array.isArray(selected)||selected.length<1||selected.length>50)throw new Error('Select 1 to 50 Membership payment items.');
+  const categories=new Set(nonPowerBillFields.map(field=>field[0])),keys=new Set();
+  for(const row of selected){if(!Number.isSafeInteger(row.applyId)||row.applyId<1||!categories.has(row.category))throw new Error('Choose valid Membership payment items.');const key=membershipPostingKey(row);if(keys.has(key))throw new Error('Remove duplicate payment items.');keys.add(key)}
+  const ids=[...new Set(selected.map(row=>row.applyId))],where=`p.ApplyID IN (${ids.join(',')})`;
+  const raw=parse(await membershipSqlAsync(membershipDatabase.database,membershipPostingRows(where,ids.length*nonPowerBillFields.length+1)),['applyId','accountNumber','memberName','category','itemName','amount','paymentDate','orNumber']);
+  const live=new Map(raw.map(row=>{row.applyId=Number(row.applyId);row.amount=Number(row.amount);return[membershipPostingKey(row),row]}));
+  return selected.map(item=>{const row=live.get(membershipPostingKey(item));if(!row)throw new Error(`Payment item ${item.applyId} · ${item.category} is no longer available.`);return row});
+}
+async function membershipPostingBillingUser(database,userId){
+  const office=databases.find(item=>item.database===database),id=String(userId??'').trim();
+  if(!office||!/^[A-Za-z0-9_.-]{1,64}$/.test(id))throw new Error('Select a billing office and posting user.');
+  const rows=parse(await sqlAsync(database,`SELECT CAST(userid AS CHAR),COALESCE(username,''),COALESCE(fullname,'') FROM tblusers WHERE CAST(userid AS CHAR)='${escapeSql(id)}' LIMIT 2`),['userid','username','fullname']);
+  if(rows.length!==1)throw new Error('The selected posting user is no longer available in the billing office. Reload the user list.');
+  return{database,office:office.label,...rows[0]};
+}
+async function previewMembershipPosting(input){
+  const datePaid=String(input.datePaid??''),orNumber=String(input.orNumber??'').trim();
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(datePaid)||!Number.isFinite(Date.parse(datePaid))||new Date(datePaid).toISOString().slice(0,10)!==datePaid)throw new Error('Enter a valid posting date.');
+  if(!/^[A-Za-z0-9._\/-]{1,50}$/.test(orNumber))throw new Error('Enter an OR of up to 50 letters, numbers, dots, dashes, slashes, or underscores.');
+  const billingUser=await membershipPostingBillingUser(input.billingDatabase,input.userId),rows=await membershipPostingSelected(input.selected);
+  if(rows.some(row=>row.paymentDate.slice(0,10)===datePaid&&row.orNumber===orNumber))throw new Error('One or more selected items already have this date and OR. Remove them before posting.');
+  const token=randomUUID(),expiresAt=new Date(Date.now()+5*60*1000).toISOString();
+  for(const [key,value] of membershipPostingPreviews)if(Date.parse(value.expiresAt)<Date.now())membershipPostingPreviews.delete(key);
+  membershipPostingPreviews.set(token,{rows,datePaid,orNumber,billingUser,expiresAt,database:membershipDatabase.database,host:membershipHost});
+  return{token,expiresAt,datePaid,orNumber,billingUser,rows,totalAmount:rows.reduce((sum,row)=>sum+row.amount,0),database:membershipDatabase.database};
+}
+async function executeMembershipPosting(token){
+  const preview=membershipPostingPreviews.get(token);membershipPostingPreviews.delete(token);
+  if(!preview||Date.now()>=Date.parse(preview.expiresAt))throw new Error('Preview expired. Review the selected payments again.');
+  if(preview.database!==membershipDatabase.database||preview.host!==membershipHost)throw new Error('Membership connection changed. Preview again.');
+  await membershipPostingBillingUser(preview.billingUser.database,preview.billingUser.userid);
+  const live=await membershipPostingSelected(preview.rows.map(({applyId,category})=>({applyId,category})));
+  for(let i=0;i<live.length;i++)if(['accountNumber','amount','paymentDate','orNumber'].some(key=>live[i][key]!==preview.rows[i][key]))throw new Error('A selected payment changed. Refresh the list and preview again.');
+  const updates=preview.rows.map(row=>{
+    const field=nonPowerBillFields.find(item=>item[0]===row.category),[,amountField,dateField,orField]=field;
+    const amount=`CAST(NULLIF(REPLACE(TRIM(CAST(\`${amountField}\` AS CHAR)),',',''),'') AS DECIMAL(14,2))`;
+    return `UPDATE mempayments SET \`${dateField}\`='${preview.datePaid}',\`${orField}\`='${escapeSql(preview.orNumber)}' WHERE ApplyID=${row.applyId} AND COALESCE(accountnumber,'')='${escapeSql(row.accountNumber)}' AND ${amount}=${row.amount.toFixed(2)} AND COALESCE(CAST(\`${dateField}\` AS CHAR),'')='${escapeSql(row.paymentDate)}' AND COALESCE(\`${orField}\`,'')='${escapeSql(row.orNumber)}'`;
+  });
+  const results=[];
+  for(let i=0;i<updates.length;i++){
+    const row=preview.rows[i];
+    try{
+      const output=await membershipSqlAsync(membershipDatabase.database,`${updates[i]}; SELECT ROW_COUNT();`),changed=Number(output.split(/\r?\n/).at(-1));
+      results.push({...row,status:changed===1?'posted':'skipped',message:changed===1?'Date and OR updated.':'The item no longer matched the preview.'});
+    }catch(error){results.push({...row,status:'failed',message:String(error.message||error).slice(0,300)})}
+  }
+  const posted=results.filter(row=>row.status==='posted'),batchId=`MEM-${Date.now()}-${randomUUID().slice(0,8)}`,postedAt=new Date().toISOString(),totalAmount=posted.reduce((sum,row)=>sum+row.amount,0);
+  let auditSaved=true;
+  try{portableDb.prepare('INSERT INTO membership_post_batch(batch_id,posted_at,database_name,payment_date,or_number,item_count,amount,details) VALUES(?,?,?,?,?,?,?,?)').run(batchId,postedAt,membershipDatabase.database,preview.datePaid,preview.orNumber,preview.rows.length,totalAmount,JSON.stringify({billingUser:preview.billingUser,results}))}catch(error){auditSaved=false;console.error('Unable to save Membership posting audit:',error)}
+  if(posted.length){nonPowerBillCache.clear();portableDb.prepare("DELETE FROM cache_entry WHERE category='non-power-bill-collection'").run()}
+  return{ok:posted.length===results.length,batchId,postedAt,itemCount:preview.rows.length,postedCount:posted.length,skippedCount:results.filter(row=>row.status==='skipped').length,failedCount:results.filter(row=>row.status==='failed').length,totalAmount,datePaid:preview.datePaid,orNumber:preview.orNumber,billingUser:preview.billingUser,auditSaved,results};
+}
+function membershipPostingHistory(){
+  const batches=portableDb.prepare('SELECT batch_id,posted_at,database_name,payment_date,or_number,item_count,amount,details FROM membership_post_batch ORDER BY posted_at DESC LIMIT 30').all();
+  return{batches:batches.map(batch=>{let details;try{details=JSON.parse(batch.details)}catch{details=[]}const results=Array.isArray(details)?details:details.results??[];return{batchId:batch.batch_id,postedAt:batch.posted_at,database:batch.database_name,datePaid:batch.payment_date,orNumber:batch.or_number,itemCount:batch.item_count,totalAmount:batch.amount,billingUser:Array.isArray(details)?null:details.billingUser??null,postedCount:results.filter(row=>row.status==='posted').length,skippedCount:results.filter(row=>row.status==='skipped').length,failedCount:results.filter(row=>row.status==='failed').length}})};
 }
 
 async function buildAgingReport(database,referenceMonth,area,rateCode,bracketType){
@@ -533,23 +620,17 @@ async function lifelineReport(filters,forceRefresh=false){
   if(!forceRefresh){const cached=lifelineCache.get(key)??readPortableCache(key);if(cached){lifelineCache.set(key,cached);return{...cached,cached:true,storage:'sqlite'}}}
   return buildLifelineReport(filters);
 }
-async function flagLifelinePaid(input){
-  const billMonth=String(input.billMonth??''),paidDate=String(input.paidDate??''),reference=String(input.reference??'').trim(),tellerAccounts=input.tellerAccounts&&typeof input.tellerAccounts==='object'?input.tellerAccounts:{},items=Array.isArray(input.items)?input.items:[];
-  if(!/^(0[1-9]|1[0-2])\d{2}$/.test(billMonth)||!/^\d{4}-\d{2}-\d{2}$/.test(paidDate)||!Number.isFinite(Date.parse(paidDate))||reference.length<1||reference.length>120||items.length<1||items.length>5000)throw new Error('Choose a valid bill month, paid date, payment reference, teller accounts, and 1–5,000 records.');
-  const groups=new Map();
-  for(const item of items){const database=String(item.database??''),source=String(item.source??''),entry=Number(item.entry),table=source==='regular'?'billhistory':source==='individual'?'billhistory_bi':'';if(!allowed.has(database)||!table||!Number.isSafeInteger(entry)||entry<1)throw new Error('The batch contains an invalid database, source, or entry.');const key=`${database}|${table}`,group=groups.get(key)??{database,table,master:table==='billhistory'?'master':'master_bi',entries:[]};group.entries.push(entry);groups.set(key,group)}
-  const groupDatabases=[...new Set([...groups.values()].map(group=>group.database))],selectedTellers=Object.fromEntries(groupDatabases.map(database=>[database,String(tellerAccounts[database]??'').trim()]));
-  if(Object.values(selectedTellers).some(value=>!/^[A-Za-z0-9_.-]{1,64}$/.test(value)))throw new Error('Select a teller account for every database included in the batch.');
-  const tellerChecks=await Promise.all(groupDatabases.map(async database=>({database,found:Boolean(String(await sqlAsync(database,`SELECT userid FROM tblusers WHERE CAST(userid AS CHAR)='${selectedTellers[database]}' LIMIT 1`)).trim())})));
-  const missing=tellerChecks.filter(item=>!item.found).map(item=>item.database);if(missing.length)throw new Error(`The selected teller account is not available in: ${missing.join(', ')}.`);
-  const statements=['START TRANSACTION'],orCollection=reference.replaceAll("'","''");
-  for(const group of groups.values()){const entries=[...new Set(group.entries)].join(','),tellerAccount=selectedTellers[group.database];statements.push(`UPDATE \`${group.database}\`.\`${group.table}\` bh INNER JOIN \`${group.database}\`.\`${group.master}\` m ON m.Code=bh.Code SET bh.flag_paid='Y',bh.date_paid='${paidDate}',bh.ORCollection='${orCollection}',bh.collector_code='${tellerAccount}' WHERE bh.Entry IN (${entries}) AND bh.BillMonth='${billMonth}' AND bh.LifelineDiscSubs<0 AND bh.TotalBill=0 AND m.flagLifeline IN (1,2) AND UPPER(TRIM(COALESCE(bh.flag_paid,'')))<>'Y'`);statements.push(`SELECT '${group.database}', '${group.table}', ROW_COUNT()`)}
-  statements.push('COMMIT');
-  const output=await sqlAsync(databases[0].database,statements.join(';'));
-  const results=parse(output,['database','table','affected']).map(row=>({...row,affected:Number(row.affected)})),affectedCount=results.reduce((sum,row)=>sum+row.affected,0),batchId=`LFP-${Date.now()}`;
-  portableDb.prepare('INSERT INTO lifeline_paid_batch(batch_id,bill_month,paid_date,reference,requested_count,affected_count,created_at,details) VALUES(?,?,?,?,?,?,?,?)').run(batchId,billMonth,paidDate,reference,items.length,affectedCount,new Date().toISOString(),JSON.stringify({tellerAccounts:selectedTellers,results}));
-  lifelineCache.clear();portableDb.prepare("DELETE FROM cache_entry WHERE category='lifeline-report'").run();
-  return{ok:true,batchId,billMonth,paidDate,reference,tellerAccounts:selectedTellers,requestedCount:items.length,affectedCount,results};
+let lifelinePostingInstance, lifelinePostingConfig;
+function lifelinePosting(){
+  const signature=JSON.stringify({databases,host:mysqlHost,port:mysqlPort,user:mysqlUser,executable:mysqlExe});
+  if(!lifelinePostingInstance||signature!==lifelinePostingConfig){
+    lifelinePostingConfig=signature;
+    lifelinePostingInstance=createLifelinePosting({databases,sql:sqlAsync,auditDb:portableDb,invalidate(){
+      lifelineCache.clear();lifelineCollectionCache.clear();collectorCache.clear();
+      portableDb.prepare("DELETE FROM cache_entry WHERE category IN ('lifeline-report','lifeline-collection','collector-report')").run();
+    }});
+  }
+  return lifelinePostingInstance;
 }
 async function lifelineTellerAccounts(){
   const officeRows=await Promise.all(databases.map(async office=>parse(await sqlAsync(office.database,"SELECT CAST(userid AS CHAR),COALESCE(username,''),COALESCE(fullname,'') FROM tblusers ORDER BY fullname,username,userid"),['userid','username','fullname']).map(row=>({...row,database:office.database,office:office.label}))));
@@ -671,8 +752,8 @@ async function netMeteringReport(database,billMonth=''){
   const selected=database==='all'?databases:databases.filter(item=>item.database===database);
   if(!selected.length)throw new Error('Invalid office');
   const monthCondition=billMonth?` WHERE bh.BillMonth='${billMonth}'`:'';
-  const statement=`SELECT bh.Entry,bh.Code,bh.AccountNumber,bh.Name,bh.Address,bh.Area,bh.Book,bh.Sequence,bh.RateCode,bh.Grid,bh.BillMonth,bh.PreviousReadingDate,bh.PresentReadingDate,bh.PresentReadingKWH,bh.PreviousReadingKWH,bh.Multiplier,bh.KilowattHour,bh.PresentReadingKWHout,bh.PreviousReadingKWHout,bh.KilowattHourOut,bh.TotalBill,bh.PreviousMonthCredit,bh.GenSysChargeOut,bh.GrandTotal,bh.flag_paid,bh.date_paid,COALESCE(m.ConnStatus,''),COALESCE(m.Serial,bh.Serial),COALESCE(m.Name,bh.Name),COALESCE(m.Address,bh.Address) FROM billhistory_net bh LEFT JOIN master_net m ON m.Code=bh.Code${monthCondition} ORDER BY CAST(CONCAT('20',RIGHT(bh.BillMonth,2),LEFT(bh.BillMonth,2)) AS UNSIGNED) DESC,bh.Area,bh.Book,bh.Sequence,bh.AccountNumber`;
-  const keys=['entry','code','accountNumber','billName','billAddress','area','book','sequence','rateCode','grid','billMonth','previousReadingDate','presentReadingDate','presentReading','previousReading','multiplier','importKwh','presentExportReading','previousExportReading','exportKwh','incomingBill','previousMonthCredit','exportRate','grandTotal','paidFlag','paidDate','connectionStatus','serial','name','address'];
+  const statement=`SELECT bh.Entry,bh.Code,bh.AccountNumber,bh.Name,bh.Address,bh.Area,bh.Book,bh.Sequence,bh.RateCode,bh.Grid,bh.BillMonth,bh.PreviousReadingDate,bh.PresentReadingDate,bh.PresentReadingKWH,bh.PreviousReadingKWH,bh.Multiplier,bh.KilowattHour,bh.PresentReadingKWHout,bh.PreviousReadingKWHout,bh.KilowattHourOut,bh.TotalBill,bh.PreviousMonthCredit,bh.GenSysChargeOut,bh.GrandTotal,bh.flag_paid,bh.ORCollection,bh.date_paid,COALESCE(m.ConnStatus,''),COALESCE(m.Serial,bh.Serial),COALESCE(m.Name,bh.Name),COALESCE(m.Address,bh.Address) FROM billhistory_net bh LEFT JOIN master_net m ON m.Code=bh.Code${monthCondition} ORDER BY CAST(CONCAT('20',RIGHT(bh.BillMonth,2),LEFT(bh.BillMonth,2)) AS UNSIGNED) DESC,bh.Area,bh.Book,bh.Sequence,bh.AccountNumber`;
+  const keys=['entry','code','accountNumber','billName','billAddress','area','book','sequence','rateCode','grid','billMonth','previousReadingDate','presentReadingDate','presentReading','previousReading','multiplier','importKwh','presentExportReading','previousExportReading','exportKwh','incomingBill','previousMonthCredit','exportRate','grandTotal','paidFlag','orCollection','paidDate','connectionStatus','serial','name','address'];
   const groups=await Promise.all(selected.map(async office=>parse(await sqlAsync(office.database,statement),keys).map(row=>{
     num(row,['entry','code','multiplier','presentReading','previousReading','importKwh','presentExportReading','previousExportReading','exportKwh','incomingBill','previousMonthCredit','exportRate','grandTotal']);
     const priorCredit=Math.min(0,row.previousMonthCredit||0),exportCredit=(row.exportKwh||0)*(row.exportRate||0),computedGrandTotal=(row.incomingBill||0)-exportCredit+priorCredit;
@@ -794,7 +875,7 @@ async function staticFile(res,file){
     const extension=path.extname(file),type={'.html':'text/html','.css':'text/css','.js':'text/javascript'}[extension]??'application/octet-stream';
     if(extension==='.html'){
       let content=await fs.readFile(file,'utf8');
-      const mainNav='<nav aria-label="Main reports"><a href="/">Tables</a><a href="/visual-report">Graphs</a><details class="collection-menu"><summary>Collection Analysis</summary><div class="collection-menu-items"><a href="/cash-flow">Cash Flow</a><a href="/collection-monitoring">Collection Monitoring</a><a href="/collection-components">Collection Components</a><a href="/collector-report">Collector Report</a><a href="/lifeline-collection">Lifeline Collection</a><a href="/non-power-bill-collection">Non-Power Bill Collection</a><a href="/membership-accounting">Membership Accounting Codes</a><a href="/lifeline-report">Lifeline</a></div></details><details class="collection-menu"><summary>CNPL</summary><div class="collection-menu-items"><a href="/cnpl-accounts">Account List</a><a href="/collection-monitoring">Collection Monitoring</a></div></details><details class="collection-menu"><summary>Sales Report</summary><div class="collection-menu-items"><a href="/monthly-sales-report">Monthly SR</a><a href="/overall-sales">Overall Sales Report</a><a href="/sales-by-area">Sales by Area</a><a href="/accounting-report">Accounting Account Codes</a><a href="/accounting-by-municipality">RateCode by Municipality</a><a href="/sales-register">Sales Register</a><a href="/sales-register-recap">Sales Register Recap</a></div></details><details class="collection-menu"><summary>Net Metering</summary><div class="collection-menu-items"><a href="/netmetering">Bill Computation &amp; Audit</a></div></details><details class="collection-menu"><summary>Engineering Analysis</summary><div class="collection-menu-items"><a href="/engineering-data">Feeder Engineering Data</a><a href="/engineering-feeder-ratecode">Feeder and RateCode Summary</a></div></details><a href="/itdata">Infotech Data Reports</a><a href="/disco-analysis">Disco analysis</a><details class="collection-menu menu-align-right"><summary>Route Analysis</summary><div class="collection-menu-items"><a href="/route-reading">Route Monitoring Reading</a><a href="/route-unpaid">Route Monitoring for Unpaid</a></div></details><a href="/settings">Settings</a><details class="collection-menu menu-align-right"><summary>Checker</summary><div class="collection-menu-items"><a href="/rate-checker">Approved-rate Checker</a><a href="/lifeline-checker">Lifeline Variance Checker</a><a href="/lifeline-paid-posting">Lifeline Paid Posting</a></div></details></nav>';
+      const mainNav='<nav aria-label="Main reports"><a href="/">Tables</a><a href="/visual-report">Graphs</a><details class="collection-menu"><summary>Collection Analysis</summary><div class="collection-menu-items"><a href="/cash-flow">Cash Flow</a><a href="/collection-monitoring">Collection Monitoring</a><a href="/collection-components">Collection Components</a><a href="/collector-report">Collector Report</a><a href="/lifeline-collection">Lifeline Collection</a><a href="/non-power-bill-collection">Non-Power Bill Collection</a><a href="/membership-accounting">Membership Accounting Codes</a><a href="/lifeline-report">Lifeline</a></div></details><details class="collection-menu"><summary>CNPL</summary><div class="collection-menu-items"><a href="/cnpl-accounts">Account List</a><a href="/collection-monitoring">Collection Monitoring</a></div></details><details class="collection-menu"><summary>Sales Report</summary><div class="collection-menu-items"><a href="/monthly-sales-report">Monthly SR</a><a href="/overall-sales">Overall Sales Report</a><a href="/sales-by-area">Sales by Area</a><a href="/ninja-vat">Ninja VAT</a><a href="/accounting-report">Accounting Account Codes</a><a href="/accounting-by-municipality">RateCode by Municipality</a><a href="/sales-register">Sales Register</a><a href="/sales-register-recap">Sales Register Recap</a></div></details><details class="collection-menu"><summary>Net Metering</summary><div class="collection-menu-items"><a href="/netmetering">Bill Computation &amp; Audit</a></div></details><details class="collection-menu"><summary>Engineering Analysis</summary><div class="collection-menu-items"><a href="/engineering-data">Feeder Engineering Data</a><a href="/engineering-feeder-ratecode">Feeder and RateCode Summary</a></div></details><a href="/itdata">Infotech Data Reports</a><a href="/disco-analysis">Disco analysis</a><details class="collection-menu menu-align-right"><summary>Route Analysis</summary><div class="collection-menu-items"><a href="/route-reading">Route Monitoring Reading</a><a href="/route-unpaid">Route Monitoring for Unpaid</a></div></details><a href="/settings">Settings</a><details class="collection-menu menu-align-right"><summary>Checker</summary><div class="collection-menu-items"><a href="/rate-checker">Approved-rate Checker</a><a href="/lifeline-checker">Lifeline Variance Checker</a><a href="/lifeline-paid-posting">Lifeline Paid Posting</a></div></details></nav>';
       content=content.replace(/<nav\b[^>]*>[\s\S]*?<\/nav>/,mainNav);
       content=content.replace('<a href="/cnpl-accounts">Account List</a><a href="/collection-monitoring">Collection Monitoring</a>','<a href="/cnpl-accounts">Account List</a><a href="/cnpl-collection-monitoring">Collection Monitoring</a>');
       content=content.replace('<a href="/engineering-feeder-ratecode">Feeder and RateCode Summary</a>','<a href="/engineering-feeder-ratecode">Feeder and RateCode Summary</a><a href="/feeder-mapping-settings">Feeder Mapping Settings</a>');
@@ -945,6 +1026,20 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url.startsWith('/register.js'))return staticFile(res,path.join(webDir,'register.js'));
   if(req.method==='GET'&&req.url.startsWith('/accounting.js'))return staticFile(res,path.join(webDir,'accounting.js'));
   if(req.method==='GET'&&req.url==='/accounting.css')return staticFile(res,path.join(webDir,'accounting.css'));
+  if(req.method==='GET'&&req.url==='/ninja-vat')return staticFile(res,path.join(webDir,'ninja-vat.html'));
+  if(req.method==='GET'&&req.url.startsWith('/ninja-vat.js'))return staticFile(res,path.join(webDir,'ninja-vat.js'));
+  if(req.method==='GET'&&req.url.startsWith('/ninja-vat.css'))return staticFile(res,path.join(webDir,'ninja-vat.css'));
+  if(req.method==='GET'&&req.url.startsWith('/api/ninja-vat?')){
+    const p=new URL(req.url,'http://localhost').searchParams,database=p.get('database')??'all',billMonths=[...new Set(p.getAll('billMonth'))];
+    if(!(database==='all'||allowed.has(database))||billMonths.length<1||billMonths.length>24||billMonths.some(month=>!/^(0[1-9]|1[0-2])\d{2}$/.test(month)))return json(res,400,{error:'Choose an office and 1 to 24 valid MMYY bill months.'});
+    try{
+      const selected=database==='all'?databases:databases.filter(item=>item.database===database),rows=(await Promise.all(selected.map(async office=>{
+        const monthsSql=billMonths.map(month=>`'${month}'`).join(','),statement=`SELECT source,area,book,accountnumber,name,address,ratecode,kilowatthour,Multiplier,EVAT_Dist_Charge,EVAT_OtherVat,totalbill,flag_paid,date_paid,billmonth,entry FROM (SELECT 'Regular' source,Area,Book,AccountNumber,Name,Address,RateCode,KilowattHour,Multiplier,EVAT_Dist_Charge,EVAT_OtherVat,TotalBill,flag_paid,date_paid,BillMonth,Entry FROM billhistory WHERE BillMonth IN (${monthsSql}) UNION ALL SELECT 'BAPA' source,Area,Book,AccountNumber,Name,Address,RateCode,KilowattHour,Multiplier,EVAT_Dist_Charge,EVAT_OtherVat,TotalBill,flag_paid,date_paid,BillMonth,Entry FROM billhistory_bm WHERE BillMonth IN (${monthsSql})) x ORDER BY accountnumber,entry`;
+        return parse(await sqlAsync(office.database,statement),['source','area','book','accountNumber','name','address','rateCode','kilowattHour','multiplier','evatDistCharge','evatOtherVat','totalBill','flagPaid','datePaid','billMonth','entry']).map(row=>({...num(row,['kilowattHour','multiplier','evatDistCharge','evatOtherVat','totalBill','entry']),office:office.label,officeDatabase:office.database}));
+      }))).flat();
+      return json(res,200,{billMonths,database,rows,totals:{records:rows.length,evatDistCharge:rows.reduce((sum,row)=>sum+row.evatDistCharge,0),evatOtherVat:rows.reduce((sum,row)=>sum+row.evatOtherVat,0),totalBill:rows.reduce((sum,row)=>sum+row.totalBill,0)}});
+    }catch(error){console.error(error);return json(res,500,{error:error.message||'Unable to load Ninja VAT report.'})}
+  }
   if(req.method==='GET'&&req.url.startsWith('/api/delinquent-report?')){
     const p=new URL(req.url,'http://localhost').searchParams,f={database:p.get('database')??'all',source:p.get('source')??'all',area:p.get('area')??'',book:p.get('book')??'',minBills:Number(p.get('minBills')??1),minAmount:Number(p.get('minAmount')??0)};
     if(!(f.database==='all'||allowed.has(f.database))||!['all','regular','individual','mother'].includes(f.source)||!/^\d{0,3}$/.test(f.area)||!/^\d{0,3}$/.test(f.book)||!Number.isInteger(f.minBills)||f.minBills<1||f.minBills>999||!Number.isFinite(f.minAmount)||f.minAmount<0||f.minAmount>1000000000)return json(res,400,{error:'Invalid delinquent report filters'});
@@ -982,6 +1077,34 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&req.url.startsWith('/api/netmetering')){const p=new URL(req.url,'http://localhost').searchParams,database=p.get('database')??'all',billMonth=p.get('billMonth')??'';if(!(database==='all'||allowed.has(database))||(billMonth&&!/^(0[1-9]|1[0-2])\d{2}$/.test(billMonth)))return json(res,400,{error:'Invalid net-metering filters'});try{return json(res,200,await netMeteringReport(database,billMonth))}catch(error){console.error(error);return json(res,500,{error:'Unable to load billhistory_net and master_net.'})}}
   const u=new URL(req.url??"/","http://localhost");
   try{
+    if(u.pathname==='/api/itdata/mobile-transfer/files'&&req.method==='GET')return json(res,200,{files:mobileTransferStore.list()});
+    if(u.pathname==='/api/itdata/mobile-transfer/files'&&req.method==='POST'){
+      if(!String(req.headers['content-type']??'').startsWith('application/octet-stream'))return json(res,415,{error:'Upload a FUBCS database.db file.'});
+      try{return json(res,201,await mobileTransferStore.receive(req,mobileTransferDir))}catch(error){return json(res,400,{error:error.message})}
+    }
+    const mobileDownload=u.pathname.match(/^\/api\/itdata\/mobile-transfer\/files\/([0-9a-f-]{36})\/download$/);
+    if(mobileDownload&&req.method==='GET'){
+      const file=mobileTransferStore.get(mobileDownload[1]);if(!file)return json(res,404,{error:'Transfer file not found.'});
+      const location=path.join(mobileTransferDir,`${file.id}.db`);
+      try{const stat=await fs.stat(location);res.writeHead(200,{'Content-Type':'application/vnd.sqlite3','Content-Length':stat.size,'Content-Disposition':'attachment; filename="database.db"','Cache-Control':'no-store'});return createReadStream(location).pipe(res)}catch{return json(res,404,{error:'Stored transfer file is missing.'})}
+    }
+    if(u.pathname==='/api/itdata/mobile-transfer/devices'&&req.method==='GET'){
+      try{return json(res,200,{devices:await listFubcsDevices()})}catch(error){return json(res,503,{error:error.message})}
+    }
+    if(u.pathname==='/api/itdata/mobile-transfer/pull'&&req.method==='POST'){
+      try{const input=await requestJson(req);return json(res,201,await pullFubcsDatabase(String(input.serial??''),String(input.profile??''),mobileTransferDir,mobileTransferStore))}catch(error){return json(res,400,{error:error.message})}
+    }
+    if(u.pathname==='/api/itdata/mobile-transfer/push'&&req.method==='POST'){
+      try{
+        const input=await requestJson(req),file=mobileTransferStore.get(String(input.fileId??''));
+        if(!file)return json(res,404,{error:'Choose a validated transfer file.'});
+        const location=path.join(mobileTransferDir,`${file.id}.db`);
+        const hasher=createHash('sha256');for await(const chunk of createReadStream(location))hasher.update(chunk);
+        const digest=hasher.digest('hex');
+        if(digest!==file.sha256)throw new Error('The staged database has changed. Upload it again.');
+        return json(res,200,await pushFubcsDatabase(String(input.serial??''),String(input.profile??''),location,file.sha256));
+      }catch(error){return json(res,400,{error:error.message})}
+    }
     if(u.pathname==='/api/itdata/workspace/connections'&&req.method==='GET')return json(res,200,{connections:workspaceConnections().map(({id,label,enabled,host,port})=>({id,label,enabled,host,port}))});
     if(u.pathname==='/api/itdata/workspace/databases'&&req.method==='GET'){
       try{return json(res,200,await workspaceDatabases(u.searchParams.get('connection')??undefined))}catch(error){return json(res,400,{error:error.message})}
@@ -997,6 +1120,16 @@ const server=http.createServer(async(req,res)=>{
     }
     if(u.pathname==='/api/itdata/bapa-reports'&&req.method==='GET'){
       try{return json(res,200,await bapaReport(databases,sqlAsync))}catch(error){console.error('BAPA reports:',error);return json(res,500,{error:'Unable to load BAPA reports from all four billing databases. Check the billing connection and try again.'})}
+    }
+    if(u.pathname==='/api/itdata/membership-posting/search'&&req.method==='GET'){
+      try{return json(res,200,await membershipPostingSearch(u.searchParams.get('search')))}catch(error){return json(res,400,{error:error.message})}
+    }
+    if(u.pathname==='/api/itdata/membership-posting/history'&&req.method==='GET')return json(res,200,membershipPostingHistory());
+    if(u.pathname==='/api/itdata/membership-posting/preview'&&req.method==='POST'){
+      try{return json(res,200,await previewMembershipPosting(await requestJson(req)))}catch(error){return json(res,400,{error:error.message})}
+    }
+    if(u.pathname==='/api/itdata/membership-posting/execute'&&req.method==='POST'){
+      try{const input=await requestJson(req);return json(res,200,await executeMembershipPosting(String(input.token??'')))}catch(error){console.error('Membership posting:',error);return json(res,400,{error:error.message})}
     }
     if(u.pathname==='/api/itdata'){
       if(req.method!=='GET'){res.setHeader('Allow','GET');return json(res,405,{error:'This report supports read-only GET requests.'})}
@@ -1104,8 +1237,12 @@ const server=http.createServer(async(req,res)=>{
       if(!valid)return json(res,400,{error:'Invalid lifeline report filters'});
       return json(res,200,await lifelineReport(filters,u.searchParams.get('refresh')==='1'));
     }
+    if(req.method==='GET'&&u.pathname==='/api/lifeline-posting/history')return json(res,200,lifelinePosting().history());
+    if(req.method==='POST'&&u.pathname==='/api/lifeline-posting/preview'){
+      try{return json(res,200,await lifelinePosting().preview(await requestJson(req)))}catch(error){return json(res,400,{error:error.message})}
+    }
     if(req.method==='POST'&&u.pathname==='/api/lifeline-flag-paid'){
-      try{return json(res,200,await flagLifelinePaid(await requestJson(req)))}catch(error){console.error(error);return json(res,400,{error:error.message||'Unable to flag the selected lifeline records as paid.'})}
+      try{const input=await requestJson(req);return json(res,200,await lifelinePosting().execute(String(input.token??'')))}catch(error){console.error(error);return json(res,400,{error:error.message||'Unable to post the selected lifeline records.'})}
     }
     if(req.method==="GET"&&u.pathname==="/api/collection-components"){
       const dateFrom=u.searchParams.get("from")??"",dateTo=u.searchParams.get("to")??"",database=u.searchParams.get("database")??"all",group=u.searchParams.get("group")??"all",validDates=/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)&&/^\d{4}-\d{2}-\d{2}$/.test(dateTo)&&dateFrom<=dateTo&&(Date.parse(dateTo)-Date.parse(dateFrom))/86400000<=370;
@@ -1132,7 +1269,7 @@ const server=http.createServer(async(req,res)=>{
     if(u.pathname==='/status-dashboard'||u.pathname==='/status-dashboard.html')return staticFile(res,path.join(webDir,'status-dashboard.html'));
     if(u.pathname==='/status-dashboard.js')return staticFile(res,path.join(webDir,'status-dashboard.js'));
     if(u.pathname==='/status-dashboard.css')return staticFile(res,path.join(webDir,'status-dashboard.css'));
-    const files={"/":"index.html","/index.html":"index.html","/ecpay":"ecpay.html","/ecpay.html":"ecpay.html","/ecpay.js":"ecpay.js","/ecpay.css":"ecpay.css","/ecpay-query-builder":"ecpay-query-builder.html","/ecpay-query-builder.html":"ecpay-query-builder.html","/ecpay-query-builder.js":"ecpay-query-builder.js","/cnpl-accounts":"cnpl.html","/cnpl-accounts.html":"cnpl.html","/cnpl.js":"cnpl.js","/cnpl.css":"cnpl.css","/visual-report":"visual.html","/visual-report.html":"visual.html","/overall-sales":"sales.html","/sales-by-area":"sales.html","/rate-checker":"sales.html","/sales.js":"sales.js","/settings":"settings.html","/settings.js":"settings.js","/settings.css":"settings.css","/cash-flow":"cashflow.html","/cash-flow.html":"cashflow.html","/collection-monitoring":"monitoring.html","/collection-monitoring.html":"monitoring.html","/collection-components":"components.html","/collection-components.html":"components.html","/collector-report":"collectors.html","/collector-report.html":"collectors.html","/lifeline-collection":"lifeline-collection.html","/lifeline-collection.html":"lifeline-collection.html","/non-power-bill-collection":"non-power-bill.html","/non-power-bill-collection.html":"non-power-bill.html","/non-power-bill.js":"non-power-bill.js","/non-power-bill.css":"non-power-bill.css","/aging-report":"aging.html","/aging-report.html":"aging.html","/loss-report":"loss.html","/loss-report.html":"loss.html","/lifeline-report":"lifeline.html","/lifeline-report.html":"lifeline.html","/lifeline-paid-posting":"lifeline.html","/app.js":"app.js","/visual.js":"visual.js","/cashflow.js":"cashflow.js","/monitoring.js":"monitoring.js","/components.js":"components.js","/collectors.js":"collectors.js","/aging.js":"aging.js","/aging.css":"aging.css","/loss.js":"loss.js","/loss.css":"loss.css","/lifeline.js":"lifeline.js","/lifeline.css":"lifeline.css","/excel-export.js":"excel-export.js","/styles.css":"styles.css"};
+    const files={"/":"index.html","/index.html":"index.html","/ecpay":"ecpay.html","/ecpay.html":"ecpay.html","/ecpay.js":"ecpay.js","/ecpay.css":"ecpay.css","/ecpay-query-builder":"ecpay-query-builder.html","/ecpay-query-builder.html":"ecpay-query-builder.html","/ecpay-query-builder.js":"ecpay-query-builder.js","/cnpl-accounts":"cnpl.html","/cnpl-accounts.html":"cnpl.html","/cnpl.js":"cnpl.js","/cnpl.css":"cnpl.css","/visual-report":"visual.html","/visual-report.html":"visual.html","/overall-sales":"sales.html","/sales-by-area":"sales.html","/rate-checker":"sales.html","/sales.js":"sales.js","/settings":"settings.html","/settings.js":"settings.js","/settings.css":"settings.css","/cash-flow":"cashflow.html","/cash-flow.html":"cashflow.html","/collection-monitoring":"monitoring.html","/collection-monitoring.html":"monitoring.html","/collection-components":"components.html","/collection-components.html":"components.html","/collector-report":"collectors.html","/collector-report.html":"collectors.html","/lifeline-collection":"lifeline-collection.html","/lifeline-collection.html":"lifeline-collection.html","/non-power-bill-collection":"non-power-bill.html","/non-power-bill-collection.html":"non-power-bill.html","/non-power-bill.js":"non-power-bill.js","/non-power-bill.css":"non-power-bill.css","/aging-report":"aging.html","/aging-report.html":"aging.html","/loss-report":"loss.html","/loss-report.html":"loss.html","/lifeline-report":"lifeline.html","/lifeline-report.html":"lifeline.html","/lifeline-paid-posting":"lifeline.html","/app.js":"app.js","/visual.js":"visual.js","/cashflow.js":"cashflow.js","/monitoring.js":"monitoring.js","/components.js":"components.js","/collectors.js":"collectors.js","/lifeline-collection.js":"lifeline-collection.js","/aging.js":"aging.js","/aging.css":"aging.css","/loss.js":"loss.js","/loss.css":"loss.css","/lifeline.js":"lifeline.js","/lifeline.css":"lifeline.css","/excel-export.js":"excel-export.js","/styles.css":"styles.css"};
     Object.assign(files,{"/cnpl-accounts":"cnpl-list.html","/cnpl-accounts.html":"cnpl-list.html","/cnpl-list.js":"cnpl-list.js","/cnpl-collection-monitoring":"cnpl-monitoring.html","/cnpl-monitoring.js":"cnpl-monitoring.js"});
     return files[u.pathname]?staticFile(res,path.join(webDir,files[u.pathname])):json(res,404,{error:"Not found"});
   }catch(error){console.error(error);return json(res,500,{error:"Unable to load this report from the database."})}

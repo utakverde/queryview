@@ -1,1 +1,153 @@
 .net-toolbar{grid-template-columns:1fr 1fr 1.4fr auto auto}.net-formula{display:flex;gap:18px;align-items:center;margin:20px 0;padding:16px 20px;border-left:4px solid var(--gold);background:#fff8e5;color:var(--ink)}.net-formula span{color:var(--muted)}.report .table-wrap{max-height:68vh}.report table{min-width:1850px}.consumer strong,.consumer span,.consumer small,td small{display:block}.consumer span{margin-top:3px}.consumer small,td small{margin-top:4px;color:var(--muted)}.status{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;text-transform:uppercase}.status.active{color:#0d665d;background:#dcefe9}.status.disconnected{color:#8a2d25;background:#f7dfdc}.variance{font-weight:700}.variance.balanced{color:#0d665d}.variance.review{color:#a13a2e;background:#fff1ef}.bill-dialog{width:min(1100px,96vw);max-width:none;max-height:92vh;padding:0;border:0;border-radius:12px;background:var(--paper);box-shadow:0 24px 80px #0007}.bill-dialog::backdrop{background:#0b1915c7}.bill-dialog form>header{display:flex;justify-content:space-between;align-items:center;padding:22px 26px;border-bottom:1px solid var(--line)}.bill-dialog h2{margin:4px 0 0;font-family:"Fraunces",serif}.bill-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:22px 26px}.bill-fields label{display:grid;gap:6px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase}.bill-fields input,.bill-fields select{width:100%;box-sizing:border-box}.bill-actions{display:flex;gap:10px;padding:0 26px 20px}.bill-success{margin:0 26px 18px;padding:12px 15px;color:#075b4f;background:#dcefe9;border:1px solid #9bcbbf}.bill-dialog>.error,.bill-dialog .error{margin:0 26px 18px}.statement{margin:0 26px 28px;padding:26px;background:#fff;border:1px solid var(--line)}.statement>header{text-align:center}.statement>header h2{font:700 20px "DM Sans",sans-serif;letter-spacing:.08em}.statement-info{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin:22px 0}.statement-info>div{padding:12px;background:#f3f5f1}.statement-info span,.statement-info strong,.statement-info small{display:block}.statement table{width:100%;min-width:0}.statement h3{margin-top:22px}.statement .subtotal{font-weight:700}.statement .grand-total{font-size:16px;background:#dcefe9}@media(max-width:760px){.net-toolbar,.bill-fields{grid-template-columns:1fr}.net-formula{display:block}.net-formula span{display:block;margin-top:8px}.bill-actions{display:grid}.statement{margin:0 12px 20px;padding:14px}.statement-info{grid-template-columns:1fr}}@media print{body>*:not(.bill-dialog){display:none!important}.bill-dialog{position:static!important;display:block!important;width:100%;max-height:none;box-shadow:none}.bill-dialog form>header,.bill-fields,.bill-actions,.bill-message{display:none!important}.statement{margin:0;border:0}}
+
+/* Net Metering report flow */
+.net-toolbar{grid-template-columns:minmax(190px,1fr) minmax(170px,.8fr) minmax(230px,1.3fr) auto;align-items:end;gap:14px;padding:18px 20px}
+.net-toolbar label{display:grid;gap:7px;color:#50615a;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.net-toolbar select,.net-toolbar input{width:100%;min-height:42px}
+.net-actions{display:flex;gap:8px;align-items:center}
+.net-actions button{min-height:42px;white-space:nowrap}
+.net-formula{margin:16px 0;border:1px solid #e7d9ab;border-radius:9px;background:#fffaf0;color:#293a33}
+.net-formula summary{padding:12px 16px;color:#68551d;font-size:12px;font-weight:700;cursor:pointer}
+.net-formula p{margin:0;padding:0 16px 14px;color:#5d6256;font-size:13px;line-height:1.55}
+.report{overflow:hidden;border:1px solid var(--line);border-radius:12px;background:#fff}
+.report .report-head{padding:20px 22px 12px}
+.report .report-head h3{margin:2px 0;font-size:20px}
+.report .table-wrap{max-height:68vh;overflow:auto}
+.report thead th{position:sticky;top:0;z-index:2;box-shadow:0 1px 0 #d5dfda}
+.report footer{display:flex;justify-content:space-between;gap:12px;padding:12px 18px;color:#66746d;font-size:12px}
+.bill-dialog{overflow:auto;color:#182723}
+.bill-dialog form>header{position:sticky;top:0;z-index:5;background:#fff}
+.bill-fields{gap:12px}
+.bill-fields label{padding:10px;border:1px solid #e0e7e2;border-radius:8px;background:#fff}
+.bill-fields input,.bill-fields select{min-height:40px}
+.bill-actions{position:sticky;bottom:0;z-index:4;flex-wrap:wrap;background:#fff;border-top:1px solid #dce4df;padding-top:14px}
+#bill-preview[hidden]{display:none}
+@media(max-width:960px){.net-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.net-actions{grid-column:1/-1;justify-content:flex-end}}
+@media(max-width:600px){.net-toolbar{grid-template-columns:1fr}.net-actions{grid-column:auto;display:grid;grid-template-columns:1fr 1fr}.net-actions button{width:100%}.net-formula p{padding-top:0}.report .report-head{padding:16px}.report footer{display:grid}.bill-fields{grid-template-columns:1fr;padding:16px}.bill-dialog form>header{padding:16px}.bill-actions{padding:12px 16px}.bill-actions button{width:100%;min-height:42px}}
+@media print{body>header,.intro,.net-toolbar,#error,#metrics,.net-formula,.report{display:none!important}.bill-dialog form>header{position:static}.bill-dialog .statement{display:block}}
+
+/* Keep bill entry and its live statement visible together. */
+.bill-dialog{width:min(1440px,98vw);height:min(94vh,1000px);max-height:94vh;overflow:hidden}
+.bill-dialog form{height:100%;display:flex;flex-direction:column;min-height:0}
+.bill-dialog form>header{flex:0 0 auto;padding:14px 22px}
+.bill-dialog h2{font-size:24px}
+.bill-dialog-intro{margin:5px 0 0;color:#62716b;font-size:12px}
+.bill-workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(370px,1fr);gap:0;overflow:hidden}
+.bill-input-panel,.bill-preview-panel{min-width:0;overflow:auto;padding:16px 20px 22px}
+.bill-input-panel{order:2;border-left:1px solid #dbe3de;background:#f7f9f7}
+.bill-preview-panel{order:1;background:#edf2ef}
+.bill-input-panel>h3,.bill-preview-panel>h3{margin:0;color:#173a32;font-size:16px}
+.bill-panel-note{margin:4px 0 12px;color:#687770;font-size:11px;line-height:1.45}
+.bill-fields{grid-template-columns:1fr;gap:8px;padding:0}
+.bill-fields label{gap:5px;padding:8px;font-size:9px}
+.bill-fields label:nth-child(1),.bill-fields label:nth-child(2){grid-column:auto}
+.bill-fields input,.bill-fields select{min-height:36px;padding:7px 9px;font-size:12px}
+.bill-actions{position:sticky;bottom:-1px;display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:12px -20px 0;padding:10px 20px;background:#f7f9f7;box-shadow:0 -8px 15px #f7f9f7}
+.bill-actions #save-bill{grid-column:1/-1}
+.bill-actions button{min-height:38px;padding:0 10px;font-size:12px}
+#bill-message{margin:8px 0 0;padding:9px 11px;font-size:12px}
+#bill-preview{min-height:240px}
+#bill-preview .statement{max-width:820px;margin:0 auto;padding:22px;box-shadow:0 8px 28px #173a3215}
+.bill-preview-placeholder{display:grid;min-height:280px;place-items:center;padding:24px;border:1px dashed #b8c8bf;border-radius:10px;background:#f8fbf9;color:#687770;text-align:center;font-size:13px;line-height:1.6}
+@media(max-width:900px){.bill-dialog{height:94vh}.bill-workspace{grid-template-columns:minmax(0,1.2fr) minmax(340px,.95fr)}.bill-input-panel,.bill-preview-panel{padding:14px}}
+@media(max-width:700px){.bill-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.bill-dialog form>header{padding:12px 14px}.bill-dialog h2{font-size:20px}.bill-workspace{display:flex;flex-direction:column;overflow:auto}.bill-input-panel,.bill-preview-panel{overflow:visible;padding:14px;border:0}.bill-input-panel{order:1}.bill-preview-panel{order:2;border-top:1px solid #d4dfd8}.bill-fields{grid-template-columns:1fr 1fr}.bill-fields label:nth-child(1),.bill-fields label:nth-child(2){grid-column:span 2}.bill-actions{margin-right:-14px;margin-left:-14px;padding-right:14px;padding-left:14px}.bill-preview-placeholder{min-height:150px}#bill-preview .statement{margin:0;padding:14px}.bill-dialog form>header{position:relative}}
+@media print{.bill-dialog{height:auto;max-height:none;overflow:visible}.bill-dialog form{height:auto}.bill-workspace{display:block;overflow:visible}.bill-input-panel,.bill-preview-panel>h3,.bill-preview-panel>.bill-panel-note{display:none!important}.bill-preview-panel{overflow:visible;padding:0;background:#fff}}
+
+/* Page title and supporting context */
+body.ui-uniform .intro.net-intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);align-items:end;gap:36px;padding:48px 0 30px;margin-bottom:22px;border-bottom:1px solid #d5ded8}
+.net-intro-copy{min-width:0}
+.net-intro .eyebrow{margin:0 0 12px;color:#0e7167;font-size:11px;letter-spacing:.14em}
+.net-intro h2{max-width:760px;margin:0;font-size:clamp(38px,5vw,62px);line-height:1.02;letter-spacing:-.045em}
+.net-intro h2 em{white-space:nowrap}
+body.ui-uniform .intro.net-intro>p{max-width:460px;margin:0 0 4px;padding:4px 0 4px 22px;border-left:2px solid #0e7167;color:#53645e;font-size:15px;line-height:1.7}
+@media(max-width:1000px){body.ui-uniform .intro.net-intro{grid-template-columns:1fr;gap:16px;padding:36px 0 24px}body.ui-uniform .intro.net-intro>p{max-width:680px}}
+@media(max-width:600px){body.ui-uniform .intro.net-intro{gap:12px;padding:28px 0 20px;margin-bottom:16px}.net-intro .eyebrow{margin-bottom:8px;font-size:10px}.net-intro h2{font-size:clamp(34px,10vw,46px)}body.ui-uniform .intro.net-intro>p{padding-left:14px;font-size:13px}}
+
+/* Reference-style bill posting dialog: account and ledger left, posting controls right. */
+.bill-dialog{width:min(1440px,98vw);height:min(760px,94vh);max-height:94vh;border:1px solid #aebbb4;border-radius:8px;background:#f4f6f4}
+.bill-dialog form{height:100%;display:flex;flex-direction:column;min-height:0}
+.bill-dialog form>header{height:58px;min-height:58px;flex:0 0 58px;padding:8px 18px;background:#f4f6f4}
+.bill-dialog form>header h2{font-size:19px}
+.bill-dialog-intro{display:none}
+.bill-workspace{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(360px,.9fr);gap:10px;padding:8px 12px 12px;overflow:hidden}
+.account-information,.posting-panel{min-width:0;min-height:0;display:grid;gap:10px}
+.account-information{grid-template-rows:auto minmax(210px,1fr) auto}
+.posting-panel{grid-template-rows:auto minmax(0,1fr) auto;overflow:auto;padding-right:2px}
+.account-information>h3,.posting-panel h3{display:none}
+.account-information fieldset,.posting-panel fieldset{min-width:0;margin:0;padding:10px;border:1px solid #c6d1cb;border-radius:4px;background:#fff;box-shadow:0 2px 5px #17201d0a}
+.account-information legend,.posting-panel legend{padding:4px 8px;border:1px solid #c6d1cb;border-radius:3px;background:#fff;color:#243a32;font-size:12px;font-weight:700}
+.profile-card{min-height:124px}
+.profile-card dl{display:grid;grid-template-columns:1fr 1.5fr;gap:5px 18px;margin:0}
+.profile-card dl>div{display:grid;grid-template-columns:minmax(64px,.55fr) minmax(0,1fr);align-items:baseline;gap:8px;min-width:0;padding:3px 0;border-bottom:1px solid #e6ebe8}
+.profile-card dt{color:#697770;font-size:10px}
+.profile-card dd{overflow:hidden;margin:0;color:#23362f;font-size:11px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.ledger-card{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.ledger-card #bill-preview{flex:1;min-height:0;overflow:auto}
+#bill-preview .ledger-period{display:flex;justify-content:space-between;gap:12px;margin:0 0 9px;padding:7px 10px;background:#edf3ef;color:#43584f;font-size:11px}
+#bill-preview .ledger-period strong{color:#173a32}
+#bill-preview table{width:100%;min-width:0;margin:0 0 8px;border-collapse:collapse}
+#bill-preview th,#bill-preview td{padding:5px 7px;border-bottom:1px solid #e1e8e3;text-align:right;font-size:10px;white-space:normal}
+#bill-preview th:first-child,#bill-preview td:first-child{text-align:left}
+#bill-preview thead th{background:#eaf1ed;color:#43584f;font-size:9px;text-transform:uppercase}
+#bill-preview .ledger-component-title{margin:10px 0 4px;color:#53655d;font-size:10px;font-weight:700;letter-spacing:.08em}
+#bill-preview .ledger-total{font-weight:700;background:#eaf4ef}
+#bill-preview .ledger-grand-total{font-size:13px;font-weight:800;background:#dcefe5;color:#173a32}
+.history-card{min-height:78px}
+.history-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.history-values span{display:grid;gap:3px;color:#697770;font-size:9px}
+.history-values strong{color:#243a32;font-size:11px}
+.consumer-search-row{display:grid;grid-template-columns:minmax(0,1fr) 38px 38px;gap:6px;margin-bottom:8px}
+.consumer-search-row input,.consumer-search-row button{min-width:0;height:38px}
+.consumer-search-row button{padding:0;font-size:20px}
+.account-search-card>label,.posting-fields label{display:grid;gap:4px;min-width:0;color:#52645c;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.account-search-card>label+label{margin-top:8px}
+.account-search-card select,.posting-fields input{width:100%;min-width:0;height:34px;padding:5px 8px;font-size:11px}
+.posting-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.posting-fields .posting-wide{grid-column:1/-1}
+.posting-fields input[readonly]{background:#f0f3f1;color:#54655d}
+.reading-posting-card{min-height:0}
+.bill-actions{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0;padding:8px;background:#f4f6f4;border-top:1px solid #d3ddd7}
+.bill-actions button{min-width:0;height:38px;padding:0 7px;font-size:10px;white-space:nowrap}
+.bill-actions #save-bill{grid-column:1/-1}
+.bill-preview-placeholder{min-height:110px;padding:16px;font-size:11px}
+#bill-message{margin:0;padding:7px;font-size:10px}
+@media(max-width:850px){.bill-workspace{grid-template-columns:minmax(0,1.15fr) minmax(330px,.95fr);gap:8px;padding:6px}.profile-card dl{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.bill-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.bill-dialog form>header{height:54px;min-height:54px;flex-basis:54px;padding:7px 12px}.bill-workspace{display:flex;flex-direction:column;overflow:auto;padding:8px}.account-information{display:contents}.account-information>h3{display:none}.posting-panel{display:contents;overflow:visible}.account-search-card{order:1}.reading-posting-card{order:2}.account-information .profile-card{order:3}.account-information .ledger-card{order:4;min-height:300px}.account-information .history-card{order:5}.bill-actions{order:6;position:sticky;bottom:0;grid-template-columns:1fr 1fr;background:#f4f6f4}.bill-actions #save-bill{grid-column:1/-1}.history-values{grid-template-columns:1fr 1fr}.account-search-card,.reading-posting-card,.account-information fieldset{margin-bottom:5px}}
+@media print{.bill-dialog{width:100%;height:auto;max-height:none;overflow:visible;border:0}.bill-dialog form{height:auto}.bill-workspace{display:block;overflow:visible;padding:0}.posting-panel,.profile-card,.history-card,.bill-dialog form>header{display:none!important}.account-information{display:block}.ledger-card{overflow:visible;border:0!important;box-shadow:none!important}.ledger-card #bill-preview{overflow:visible}.bill-actions{display:none!important}}
+.posting-panel{grid-template-rows:auto minmax(0,1fr) auto auto}
+.ledger-card{display:grid;grid-template-rows:minmax(0,190px) minmax(0,1fr);gap:8px}
+.ledger-card #bill-preview{min-height:0;overflow:auto;border-bottom:1px solid #dce4df}
+.ledger-card .consumer-ledger{min-height:0;overflow:auto}
+.consumer-ledger p{margin:8px;color:#66746d;font-size:10px}
+.ledger-history-heading,.history-month-heading{display:flex;justify-content:space-between;align-items:center;margin:0 0 5px;color:#43584f;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.ledger-history-heading span{color:#75827c;font-weight:500;letter-spacing:0;text-transform:none}
+.ledger-history-table,.history-month-table{max-width:100%;overflow:auto}
+.ledger-history-table table,.history-month-table table{width:100%;min-width:850px;border-collapse:collapse}
+.ledger-history-table th,.ledger-history-table td,.history-month-table th,.history-month-table td{padding:5px 6px;border-bottom:1px solid #e1e8e3;text-align:right;font-size:9px;white-space:nowrap}
+.ledger-history-table th:first-child,.ledger-history-table td:first-child,.history-month-table th:first-child,.history-month-table td:first-child{text-align:left}
+.ledger-history-table thead th,.history-month-table thead th{position:sticky;top:0;background:#eaf1ed;color:#43584f;font-size:8px;text-transform:uppercase}
+.ledger-history-table td small{display:block;margin-top:2px;color:#77847d;font-size:8px}
+.live-preview-head,.live-grand-total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 9px;background:#edf3ef;color:#43584f;font-size:10px}
+.live-preview-head{font-weight:700}
+.live-preview-head strong{color:#173a32}
+.live-reading-table{margin:5px 0!important}
+.live-reading-table th,.live-reading-table td{padding:4px 6px!important;font-size:9px!important}
+.live-grand-total{background:#dcefe5;font-weight:700}
+.live-grand-total strong{color:#173a32;font-size:13px}
+.preview-breakdown{margin-top:5px}
+.preview-breakdown summary{padding:5px 0;color:#53655d;font-size:9px;font-weight:700;cursor:pointer}
+.preview-breakdown table{min-width:540px!important}
+.history-values{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:5px}
+.history-months,.history-month-table{max-height:110px;overflow:auto}
+.history-month-table table{min-width:0}
+.history-month-table th,.history-month-table td{font-size:8px}
+@media(max-width:700px){.account-information{display:contents}.posting-panel{display:contents}.account-information .ledger-card{min-height:490px}.ledger-card{grid-template-rows:190px minmax(260px,1fr)}.history-card{order:5}.consumer-ledger table{min-width:780px}}
+@media print{.ledger-card{display:block}.consumer-ledger,.ledger-history-table,.history-card{display:none!important}}
+.net-page-menu{display:flex;align-items:center;gap:8px;margin:0 0 14px;padding:5px;border-bottom:1px solid #d5ded8}
+.net-page-menu a,.net-page-menu button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border:1px solid transparent;border-radius:7px;background:transparent;color:#52645c;font:700 13px 'DM Sans',sans-serif;text-decoration:none;cursor:pointer}
+.net-page-menu a:hover{background:#e8efeb;color:#173a32}
+.net-page-menu a.active{border-color:#c7d8ce;background:#e7f0eb;color:#173a32}
+.net-page-menu button{margin-left:auto;border-color:#0e7167;background:#0e7167;color:#fff}
+.net-page-menu button:hover{background:#095f56}
+.net-toolbar{grid-template-columns:minmax(190px,1fr) minmax(170px,.8fr) minmax(230px,1.3fr) auto}
+@media(max-width:600px){.net-page-menu{margin-bottom:10px}.net-page-menu a,.net-page-menu button{min-height:38px;padding:0 11px;font-size:12px}.net-page-menu button{margin-left:auto}.net-actions{display:block}.net-actions button{width:100%}}

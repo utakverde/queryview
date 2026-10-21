@@ -34,15 +34,15 @@ $('#search-form').addEventListener('submit',event=>{event.preventDefault();if(lo
 $('#clear').addEventListener('click',()=>{$('#search').value='';search='';load()});
 $('#previous').addEventListener('click',()=>load(page-1));$('#next').addEventListener('click',()=>load(page+1));load();
 
-let bapaData=null,bapaBusy=false;
+let bapaData=null,bapaBusy=false,membershipData=null,membershipBusy=false;
 const tabs=[...document.querySelectorAll('.it-tabs [role="tab"]')];
 function selectTab(id){
   const selected=tabs.find(tab=>tab.id===id)||tabs[0];
   for(const tab of tabs){const active=tab===selected;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;document.getElementById(tab.getAttribute('aria-controls')).hidden=!active}
 }
-function tabFromHash(){selectTab(location.hash==='#bapa-reports'?'bapa-reports-tab':location.hash==='#mysqlworkspace'?'mysqlworkspace-tab':'records-tab');if(location.hash==='#bapa-reports'&&!bapaData)loadBapa()}
+function tabFromHash(){selectTab(location.hash==='#mobile-transfer'?'mobile-transfer-tab':location.hash==='#membership-posting'?'membership-posting-tab':location.hash==='#bapa-reports'?'bapa-reports-tab':location.hash==='#mysqlworkspace'?'mysqlworkspace-tab':'records-tab');if(location.hash==='#bapa-reports'&&!bapaData)loadBapa();if(location.hash==='#membership-posting'){if(!membershipData)loadMembership();loadMembershipBillingUsers();loadMembershipHistory()}if(location.hash==='#mobile-transfer'){loadMobileFiles();loadMobileDevices()}}
 for(const [index,tab] of tabs.entries()){
-  tab.addEventListener('click',()=>{const hash=tab.id==='bapa-reports-tab'?'#bapa-reports':tab.id==='mysqlworkspace-tab'?'#mysqlworkspace':'#records';history.replaceState(null,'',hash);selectTab(tab.id);if(tab.id==='bapa-reports-tab'&&!bapaData)loadBapa()});
+  tab.addEventListener('click',()=>{const hash=tab.id==='mobile-transfer-tab'?'#mobile-transfer':tab.id==='membership-posting-tab'?'#membership-posting':tab.id==='bapa-reports-tab'?'#bapa-reports':tab.id==='mysqlworkspace-tab'?'#mysqlworkspace':'#records';history.replaceState(null,'',hash);selectTab(tab.id);if(tab.id==='bapa-reports-tab'&&!bapaData)loadBapa();if(tab.id==='membership-posting-tab'){if(!membershipData)loadMembership();loadMembershipBillingUsers();loadMembershipHistory()}if(tab.id==='mobile-transfer-tab'){loadMobileFiles();loadMobileDevices()}});
   tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();tabs[next].focus();tabs[next].click()});
 }
 window.addEventListener('hashchange',tabFromHash);
@@ -176,4 +176,195 @@ $('#bapa-export').addEventListener('click',()=>{
   link.href=url;link.download=`samelco-bapa-reports-${office}-${new Date().toISOString().slice(0,10)}.xls`;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 $('#bapa-refresh').addEventListener('click',loadBapa);$('#bapa-office').addEventListener('change',renderBapa);$('#bapa-search').addEventListener('input',renderBapa);$('#bapa-form').addEventListener('submit',event=>{event.preventDefault();renderBapa()});
+const membershipMoney=new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'});
+function membershipDefaults(){const to=new Date(),from=new Date(to);from.setDate(from.getDate()-30);$('#membership-to').value=to.toISOString().slice(0,10);$('#membership-from').value=from.toISOString().slice(0,10)}
+function renderMembership(){
+  if(!membershipData)return;
+  const category=$('#membership-category').value,search=$('#membership-search').value.trim().toLowerCase();
+  const rows=membershipData.rows.filter(row=>(category==='all'||row.category===category)&&[row.applyId,row.accountNumber,row.orNumber,row.itemName].some(value=>String(value??'').toLowerCase().includes(search)));
+  $('#membership-rows').replaceChildren(...rows.map(item=>{const tr=document.createElement('tr');for(const value of [item.paymentDate,item.applyId,item.accountNumber,item.category,item.itemName,membershipMoney.format(item.amount),item.orNumber,item.accountingCode||'Unmapped'])tr.append(cell('td',value));return tr}));
+  if(!rows.length){const tr=document.createElement('tr'),td=cell('td','No matching payments.');td.colSpan=8;tr.append(td);$('#membership-rows').append(tr)}
+  const amount=rows.reduce((sum,row)=>sum+row.amount,0);
+  $('#membership-summary').textContent=`${rows.length.toLocaleString()} payment lines · ${membershipMoney.format(amount)} · ${new Set(rows.map(row=>row.applyId)).size.toLocaleString()} applications`;
+}
+async function loadMembership(){
+  if(membershipBusy)return;
+  const from=$('#membership-from').value,to=$('#membership-to').value;
+  if(!from||!to||from>to){$('#membership-status').textContent='Choose a valid paid-date range.';return}
+  membershipBusy=true;$('#membership-load').disabled=true;$('#membership-status').className='';$('#membership-status').textContent='Loading Membership payments…';
+  try{
+    const response=await fetch('/api/non-power-bill-collection?'+new URLSearchParams({from,to,refresh:'1'}),{cache:'no-store'}),data=await response.json();
+    if(!response.ok)throw new Error(data.error||'Unable to load Membership payments.');
+    membershipData=data;$('#membership-source').textContent=data.database;
+    const prior=$('#membership-category').value,categories=[...new Set(data.rows.map(row=>row.category))].sort();
+    $('#membership-category').replaceChildren(new Option('All categories','all'),...categories.map(value=>new Option(value,value)));
+    if(categories.includes(prior))$('#membership-category').value=prior;
+    renderMembership();$('#membership-status').textContent=`Paid ${from} to ${to} · Updated ${new Date(data.generatedAt).toLocaleString()}`;
+  }catch(error){$('#membership-status').className='error';$('#membership-status').textContent=error.message}
+  finally{membershipBusy=false;$('#membership-load').disabled=false}
+}
+membershipDefaults();
+$('#membership-view-form').addEventListener('submit',event=>{event.preventDefault();loadMembership()});
+$('#membership-category').addEventListener('change',renderMembership);
+$('#membership-search').addEventListener('input',renderMembership);
+let membershipPostRows=[],membershipPostPreview=null,membershipPostBusy=false,billingUserOffices=null,billingUsersBusy=false;
+async function loadMembershipBillingUsers(){
+  if(billingUserOffices||billingUsersBusy)return;
+  billingUsersBusy=true;
+  try{
+    const data=await workspaceRequest('/api/lifeline-teller-accounts');
+    billingUserOffices=data.databases;
+    $('#membership-billing-office').replaceChildren(new Option('Choose billing office',''),...data.databases.map(item=>new Option(item.label,item.database)));
+    $('#membership-post-status').textContent='Choose a billing office and posting user, then search for payment items.';
+  }catch(error){$('#membership-billing-office').replaceChildren(new Option('Unable to load offices',''));$('#membership-post-status').className='error';$('#membership-post-status').textContent=`Unable to load billing users: ${error.message}`}
+  finally{billingUsersBusy=false}
+}
+function renderMembershipBillingUsers(){
+  invalidateMembershipPreview();
+  const office=billingUserOffices?.find(item=>item.database===$('#membership-billing-office').value),users=office?.accounts??[];
+  $('#membership-billing-user').replaceChildren(new Option('Choose posting user',''),...users.map(item=>new Option(`${item.fullname||item.username||item.userid} · ${item.username||'no username'} · ID ${item.userid}`,item.userid)));
+  $('#membership-billing-user').disabled=!office;
+}
+function selectedMembershipItems(){return [...$('#membership-post-rows').querySelectorAll('input[type="checkbox"]:checked')].map(input=>membershipPostRows[Number(input.value)])}
+function invalidateMembershipPreview(){membershipPostPreview=null;$('#membership-preview-panel').hidden=true;$('#membership-execute').disabled=true}
+function updateMembershipSelection(){
+  invalidateMembershipPreview();
+  const rows=selectedMembershipItems(),amount=rows.reduce((sum,row)=>sum+row.amount,0);
+  $('#membership-selected-total').textContent=`${rows.length} item${rows.length===1?'':'s'} selected · ${membershipMoney.format(amount)}`;
+  $('#membership-preview').disabled=membershipPostBusy||!rows.length;
+}
+async function findMembershipItems(){
+  if(membershipPostBusy)return;
+  const search=$('#membership-post-search').value.trim();if(search.length<2){$('#membership-post-status').textContent='Enter at least two characters.';return}
+  membershipPostBusy=true;$('#membership-find').disabled=true;invalidateMembershipPreview();$('#membership-preview').disabled=true;$('#membership-post-status').className='';$('#membership-post-status').textContent='Searching Membership payment items…';
+  try{
+    const data=await workspaceRequest('/api/itdata/membership-posting/search?'+new URLSearchParams({search}));
+    membershipPostRows=data.rows;
+    $('#membership-post-rows').replaceChildren(...data.rows.map((item,index)=>{
+      const tr=document.createElement('tr'),choice=document.createElement('td'),check=document.createElement('input');check.type='checkbox';check.value=String(index);check.setAttribute('aria-label',`Select ${item.category} for application ${item.applyId}`);check.addEventListener('change',updateMembershipSelection);choice.append(check);tr.append(choice);
+      for(const value of [item.applyId,item.accountNumber,item.memberName,item.itemName,membershipMoney.format(item.amount),item.paymentDate||'—',item.orNumber||'—'])tr.append(cell('td',value));return tr;
+    }));
+    if(!data.rows.length){const tr=document.createElement('tr'),td=cell('td','No payment items found.');td.colSpan=8;tr.append(td);$('#membership-post-rows').append(tr)}
+    $('#membership-post-status').textContent=`${data.rows.length} payment items found${data.truncated?' · Refine the search to see more':''}. Select up to 50 items to apply one date and OR.`;
+    updateMembershipSelection();
+  }catch(error){membershipPostRows=[];$('#membership-post-rows').replaceChildren();$('#membership-post-status').className='error';$('#membership-post-status').textContent=error.message}
+  finally{membershipPostBusy=false;$('#membership-find').disabled=false;updateMembershipSelection()}
+}
+async function previewMembershipItems(){
+  if(membershipPostBusy)return;
+  const selected=selectedMembershipItems();if(!selected.length)return;
+  const datePaid=$('#membership-post-date').value,orNumber=$('#membership-post-or').value.trim();
+  const billingDatabase=$('#membership-billing-office').value,userId=$('#membership-billing-user').value;
+  if(!billingDatabase||!userId||!datePaid||!orNumber){$('#membership-post-status').textContent='Choose a billing office, posting user, date, and OR number.';return}
+  membershipPostBusy=true;$('#membership-preview').disabled=true;invalidateMembershipPreview();$('#membership-post-status').className='';$('#membership-post-status').textContent='Checking selected payment items…';
+  try{
+    const data=await workspaceRequest('/api/itdata/membership-posting/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({selected:selected.map(({applyId,category})=>({applyId,category})),billingDatabase,userId,datePaid,orNumber})});
+    membershipPostPreview=data;
+    $('#membership-preview-summary').textContent=`${data.rows.length} items · ${membershipMoney.format(data.totalAmount)} · ${data.billingUser.office} user ${data.billingUser.fullname||data.billingUser.username||data.billingUser.userid} (ID ${data.billingUser.userid}) · Apply ${data.datePaid} and OR ${data.orNumber} to every selected item. Review current values below.`;
+    $('#membership-preview-rows').replaceChildren(...data.rows.map(item=>{const tr=document.createElement('tr');for(const value of [item.applyId,item.accountNumber,item.itemName,membershipMoney.format(item.amount),item.paymentDate||'—',item.orNumber||'—',data.datePaid,data.orNumber])tr.append(cell('td',value));return tr}));
+    $('#membership-preview-panel').hidden=false;$('#membership-execute').disabled=false;
+    $('#membership-post-status').textContent=`Preview ready. Expires ${new Date(data.expiresAt).toLocaleTimeString()}.`;
+  }catch(error){$('#membership-post-status').className='error';$('#membership-post-status').textContent=error.message}
+  finally{membershipPostBusy=false;$('#membership-preview').disabled=!selectedMembershipItems().length}
+}
+async function executeMembershipItems(){
+  if(membershipPostBusy||!membershipPostPreview)return;
+  if(Date.now()>=Date.parse(membershipPostPreview.expiresAt)){invalidateMembershipPreview();$('#membership-post-status').textContent='Preview expired. Review the payment items again.';return}
+  const token=membershipPostPreview.token;membershipPostBusy=true;$('#membership-execute').disabled=true;$('#membership-post-status').textContent='Posting selected Membership payments…';
+  try{
+    const data=await workspaceRequest('/api/itdata/membership-posting/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token})});
+    invalidateMembershipPreview();membershipPostBusy=false;
+    $('#membership-result-summary').textContent=`Batch ${data.batchId} · ${data.billingUser.office} user ${data.billingUser.fullname||data.billingUser.username||data.billingUser.userid} · ${data.postedCount} posted · ${data.skippedCount} skipped · ${data.failedCount} failed · ${membershipMoney.format(data.totalAmount)} posted`;
+    $('#membership-result-rows').replaceChildren(...data.results.map(item=>{const tr=document.createElement('tr');for(const value of [item.applyId,item.itemName,membershipMoney.format(item.amount),item.status,item.message])tr.append(cell('td',value));return tr}));
+    $('#membership-result-panel').hidden=false;
+    await findMembershipItems();await loadMembership();await loadMembershipHistory();
+    $('#membership-post-status').className=data.ok?'':'error';$('#membership-post-status').textContent=`${data.postedCount} of ${data.itemCount} items posted · ${membershipMoney.format(data.totalAmount)} · Batch ${data.batchId}${data.auditSaved?'':' · Local audit save failed; contact an administrator'}. Review the results below.`;
+  }catch(error){invalidateMembershipPreview();$('#membership-post-status').className='error';$('#membership-post-status').textContent=error.message}
+  finally{membershipPostBusy=false;$('#membership-execute').disabled=true}
+}
+$('#membership-post-date').value=new Date().toISOString().slice(0,10);
+$('#membership-post-form').addEventListener('submit',event=>{event.preventDefault();findMembershipItems()});
+$('#membership-billing-office').addEventListener('change',renderMembershipBillingUsers);
+$('#membership-billing-user').addEventListener('change',invalidateMembershipPreview);
+$('#membership-post-date').addEventListener('input',invalidateMembershipPreview);
+$('#membership-post-or').addEventListener('input',invalidateMembershipPreview);
+$('#membership-preview').addEventListener('click',previewMembershipItems);
+$('#membership-execute').addEventListener('click',executeMembershipItems);
+let membershipHistoryBusy=false;
+async function loadMembershipHistory(){
+  if(membershipHistoryBusy)return;
+  membershipHistoryBusy=true;$('#membership-history-refresh').disabled=true;$('#membership-history-status').className='';$('#membership-history-status').textContent='Loading recent posting batches…';
+  try{
+    const data=await workspaceRequest('/api/itdata/membership-posting/history');
+    $('#membership-history-rows').replaceChildren(...data.batches.map(item=>{const tr=document.createElement('tr');const user=item.billingUser;for(const value of [new Date(item.postedAt).toLocaleString(),item.batchId,user?.office??'—',user?.fullname||user?.username||user?.userid||'—',item.datePaid,item.orNumber,item.postedCount,item.skippedCount,item.failedCount,membershipMoney.format(item.totalAmount)])tr.append(cell('td',value));return tr}));
+    if(!data.batches.length){const tr=document.createElement('tr'),td=cell('td','No Membership posting batches yet.');td.colSpan=10;tr.append(td);$('#membership-history-rows').append(tr)}
+    $('#membership-history-status').textContent=`Showing ${data.batches.length} most recent batches.`;
+  }catch(error){$('#membership-history-status').className='error';$('#membership-history-status').textContent=error.message}
+  finally{membershipHistoryBusy=false;$('#membership-history-refresh').disabled=false}
+}
+$('#membership-history-refresh').addEventListener('click',loadMembershipHistory);
+let mobileFilesBusy=false;
+async function loadMobileFiles(){
+  if(mobileFilesBusy)return;
+  mobileFilesBusy=true;$('#mobile-refresh').disabled=true;$('#mobile-transfer-status').className='';$('#mobile-transfer-status').textContent='Loading validated transfer files…';
+  try{
+    const data=await workspaceRequest('/api/itdata/mobile-transfer/files');
+    $('#mobile-transfer-rows').replaceChildren(...data.files.map(item=>{
+      const tr=document.createElement('tr'),counts=item.summary.counts,bills=Object.entries(counts).filter(([name])=>name.startsWith('billhistory')).reduce((sum,[,count])=>sum+count,0);
+      for(const value of [new Date(item.createdAt).toLocaleString(),item.source,`${(item.sizeBytes/1048576).toFixed(2)} MB`,counts.reading??'—',bills,counts.reading_pay??'—'])tr.append(cell('td',value));
+      const hash=cell('td',item.sha256.slice(0,16)+'…');hash.title=item.sha256;tr.append(hash);
+      const action=document.createElement('td'),link=cell('a','Download database.db');link.href=`/api/itdata/mobile-transfer/files/${item.id}/download`;action.append(link);tr.append(action);return tr;
+    }));
+    if(!data.files.length){const tr=document.createElement('tr'),td=cell('td','No validated transfer files yet.');td.colSpan=8;tr.append(td);$('#mobile-transfer-rows').append(tr)}
+    const picker=$('#mobile-send-file'),selected=picker.value;
+    picker.replaceChildren(new Option('Select a staged database.db',''),...data.files.map(item=>new Option(`${new Date(item.createdAt).toLocaleString()} · ${item.source} · ${item.sha256.slice(0,8)}`,item.id)));
+    if(data.files.some(item=>item.id===selected))picker.value=selected;
+    $('#mobile-transfer-status').textContent=`${data.files.length} validated file${data.files.length===1?'':'s'} available.`;
+  }catch(error){$('#mobile-transfer-status').className='error';$('#mobile-transfer-status').textContent=error.message}
+  finally{mobileFilesBusy=false;$('#mobile-refresh').disabled=false}
+}
+async function uploadMobileFile(event){
+  event.preventDefault();const file=$('#mobile-upload-file').files[0];if(!file)return;
+  $('#mobile-upload-button').disabled=true;$('#mobile-transfer-status').className='';$('#mobile-transfer-status').textContent=`Uploading and checking ${file.name}…`;
+  try{
+    const response=await fetch('/api/itdata/mobile-transfer/files',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file}),data=await response.json();
+    if(!response.ok)throw new Error(data.error||'Unable to upload the database file.');
+    $('#mobile-upload-file').value='';await loadMobileFiles();
+    $('#mobile-transfer-status').textContent=`Validated database.db · ${(data.sizeBytes/1048576).toFixed(2)} MB · SHA-256 ${data.sha256.slice(0,16)}…`;
+  }catch(error){$('#mobile-transfer-status').className='error';$('#mobile-transfer-status').textContent=error.message}
+  finally{$('#mobile-upload-button').disabled=false}
+}
+$('#mobile-upload-form').addEventListener('submit',uploadMobileFile);
+$('#mobile-refresh').addEventListener('click',loadMobileFiles);
+let mobileDevicesBusy=false,mobileAdbBusy=false;
+async function loadMobileDevices(){
+  if(mobileDevicesBusy)return;
+  mobileDevicesBusy=true;$('#mobile-devices-refresh').disabled=true;
+  try{
+    const data=await workspaceRequest('/api/itdata/mobile-transfer/devices'),picker=$('#mobile-device'),selected=picker.value;
+    picker.replaceChildren(new Option('Select a connected phone',''),...data.devices.map(item=>new Option(`${item.serial} (${item.state})`,item.state==='device'?item.serial:'')));
+    if(data.devices.some(item=>item.serial===selected&&item.state==='device'))picker.value=selected;
+    const ready=data.devices.filter(item=>item.state==='device').length;
+    $('#mobile-device-status').className='';$('#mobile-device-status').textContent=ready?`${ready} authorized phone${ready===1?'':'s'} connected.`:'No authorized phone found. Check USB debugging and the phone authorization prompt.';
+  }catch(error){$('#mobile-device').replaceChildren(new Option('ADB unavailable',''));$('#mobile-device-status').className='error';$('#mobile-device-status').textContent=error.message}
+  finally{mobileDevicesBusy=false;$('#mobile-devices-refresh').disabled=false}
+}
+async function transferMobile(direction){
+  if(mobileAdbBusy)return;
+  const serial=$('#mobile-device').value,profile=$('#mobile-profile').value,fileId=$('#mobile-send-file').value;
+  if(!serial){$('#mobile-device-status').className='error';$('#mobile-device-status').textContent='Select an authorized Android phone.';return}
+  if(direction==='push'&&!fileId){$('#mobile-device-status').className='error';$('#mobile-device-status').textContent='Select a validated database.db to upload to the phone.';return}
+  if(direction==='push'&&!window.confirm('Replace the phone app Import/database.db with the selected staged file?'))return;
+  mobileAdbBusy=true;$('#mobile-pull').disabled=true;$('#mobile-push').disabled=true;
+  $('#mobile-device-status').className='';$('#mobile-device-status').textContent=direction==='pull'?'Downloading and validating database.db from the phone…':'Uploading database.db to the phone and checking its SHA-256…';
+  try{
+    const data=await workspaceRequest(`/api/itdata/mobile-transfer/${direction}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({serial,profile,fileId})});
+    if(direction==='pull'){await loadMobileFiles();$('#mobile-send-file').value=data.id;$('#mobile-device-status').textContent=`Downloaded and validated database.db · SHA-256 ${data.sha256.slice(0,16)}…`}
+    else $('#mobile-device-status').textContent=`Uploaded and verified database.db on ${serial} · SHA-256 ${data.sha256.slice(0,16)}…`;
+  }catch(error){$('#mobile-device-status').className='error';$('#mobile-device-status').textContent=error.message}
+  finally{mobileAdbBusy=false;$('#mobile-pull').disabled=false;$('#mobile-push').disabled=false}
+}
+$('#mobile-devices-refresh').addEventListener('click',loadMobileDevices);
+$('#mobile-pull').addEventListener('click',()=>transferMobile('pull'));
+$('#mobile-push').addEventListener('click',()=>transferMobile('push'));
 tabFromHash();

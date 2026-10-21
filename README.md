@@ -10,6 +10,10 @@ The Infotech Data Reports page includes a **BAPA Reports** tab at `/itdata#bapa-
 
 The rate-component allocation and reconciliation report is available at `/collection-components`.
 
+The **Ninja VAT** sales report is available at `/ninja-vat`. Select an office and up to 24 bill months to review Regular and BAPA bills with EVAT distribution and other VAT amounts; the XLS export includes office and source summaries plus the full result set.
+
+Collection Components displays the revised billing hierarchy from the supplied reference: Generation and Transmission, Distribution Revenue, Other Charges, Government Charges, Government Mandated Pass Through Charges, Universal Charges, FIT-All, REC Rate, and GEA-All. Items whose reference labels do not yet have a confirmed billing-column mapping are called out in the report.
+
 Collector and bank collection performance is available at `/collector-report`.
 
 BAPA mother-meter versus individual-consumer loss analysis is available at `/loss-report`.
@@ -39,7 +43,19 @@ No administrator access is required unless Windows Firewall must be opened for L
 
 Report IDs: `area-address`, `monthly-growth`, `collection`, `area-billing`, `consumer-history`, `combined-history`, `payment-insights`, and `billing-cycle-detail`.
 
-Database access is read-only. Settings come from `consumer_growth_kwh_forecast/builder.config.json`.
+Most reports use read-only database access. Membership Posting at `/itdata#membership-posting` updates the selected fee items' payment date and OR in `membership.mempayments` after a preview. It accepts up to 50 items per batch and lets the operator choose a user from a billing office's `tblusers`. The selected billing user and each posting result are recorded in local SQLite and shown in recent posting batches. The Membership table uses MyISAM, so partial results are possible. The chosen user does not overwrite the row-level `mempayments.userid`, which may describe other fee items in the same application. The configured Membership MySQL user needs `UPDATE` permission for posting. Settings come from `consumer_growth_kwh_forecast/builder.config.json`.
+
+### Lifeline paid posting
+
+At `/lifeline-paid-posting`, generate the eligible zero-bill account list and select individual records, the visible page, or all matches in the current worksheet/search (maximum 5,000 per batch). Choose each included office's teller, the paid date, and one OR, then **Preview selected payments**. The preview reads live bills and shows ready, already-paid, and blocked accounts. **Post reviewed payments** uses those reviewed values; changed bills and existing payments are skipped. Previews expire after 10 minutes and can be executed once. The page shows per-account results and recent SQLite batch history with details and Excel export. Regular and BAPA individual bills use their respective billing tables.
+
+Run `node lifeline_posting.test.mjs` to check posting eligibility, changed-record protection, duplicate submission handling, BAPA routing, and audit results using an in-memory test database.
+
+### FUBCS Android transfer
+
+Open `/itdata#mobile-transfer` to upload a FUBCS `database.db` from a file picker, inspect its SQLite integrity and table counts, and download a validated copy. Files are stored under `portable_data/mobile_transfer/`; only metadata is stored in the local reporting SQLite database. The 512 MB upload limit applies to both browser and USB transfers. Staging a file does not import its rows into billing MySQL.
+
+For USB transfer, install Android Platform Tools (`adb`) on the computer running this report, connect and authorize the phone with USB debugging, then refresh the device list. Select the app profile and use **Download from phone** to copy its `Download/database.db` into the staging list or **Upload to phone** to copy a selected staged file to `Import/database.db`. The upload verifies the phone copy with SHA-256. The PowerRead profile uses `run-as com.powerread.mobile` and needs a debuggable APK. The legacy RAM profile uses the App Inventor external path. The Android app must export its data before a download can find `Download/database.db`. Set `ADB_EXE` if `adb` is not on `PATH`.
 
 Reports are cached for 30 minutes in `.report_cache` and then refreshed in the background. Add `refresh=1` to a report API request when an immediate database refresh is required.
 
