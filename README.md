@@ -90,7 +90,7 @@ Arguments are `BillMonth`, collection date from, and collection date to. Run the
 
 ## Set Up From Git
 
-Copy `consumer_growth_kwh_forecast/builder.config.example.json` to `consumer_growth_kwh_forecast/builder.config.json` before starting the server. Configure your database connection locally using `CONFIGURE.bat` or `server_settings.bat`. Private configuration files are excluded from Git.
+Copy `consumer_growth_kwh_forecast/builder.config.example.json` to `consumer_growth_kwh_forecast/builder.config.json` before starting the server. Configure your database connection locally using `CONFIGURE.bat` or `server_settings.bat`. Private configuration files are excluded from Git. Run `npm install` to install the SQL Server driver. The optional SQL Server connection is configured in Settings and exposes its selected databases in the Infotech Data SQL workspace.
 
 For the workbook builder, copy `.workbook_build/builder.config.example.json` to `.workbook_build/builder.config.json`.
 

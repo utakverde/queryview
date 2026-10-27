@@ -23,7 +23,8 @@ export async function routeReport(f, databases, query) {
     if(f.mode==='reading')for(const [table,key] of [['disconnection','disconnections'],['reconnection','reconnections'],['changemeter','meterChanges']]){
       const events=await read(office.database,`SELECT x.Area,x.Book,COUNT(*) FROM ${table}${suffix} x WHERE ${range('x.Date')} ${loc('x')} GROUP BY x.Area,x.Book`,['area','book','count']);for(const e of events)route(e.area,e.book)[key]+=Number(e.count);
     }
-    return {routes:[...routes.values()],accounts:accounts.filter(a=>f.mode==='reading'?(a.unbilled>0||a.unpaidBills>0):a.unpaidBills>0)};
+    const routeRows=[...routes.values()].filter(route=>f.mode==='reading'||route.unpaidAccounts>0);
+    return {routes:routeRows,accounts:accounts.filter(a=>f.mode==='reading'?(a.unbilled>0||a.unpaidBills>0):a.unpaidBills>0)};
   }));
   return {filters:f,previousMonth:previous,generatedAt:new Date().toISOString(),routes:groups.flatMap(g=>g.routes),accounts:groups.flatMap(g=>g.accounts)};
 }

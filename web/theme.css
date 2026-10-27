@@ -1,0 +1,24 @@
+.theme-control{display:flex;align-items:center;gap:7px;margin-left:8px;color:var(--muted);font-size:11px;font-weight:700;white-space:nowrap}.theme-control select{width:auto;min-width:105px;height:34px;padding:0 9px;color:var(--ink);background:var(--card);border:1px solid var(--line);font-size:12px}
+html[data-theme="dark"]{--ink:#e5ece8;--muted:#aab8b1;--paper:#111714;--card:#1b231f;--teal:#72d1bf;--line:#39463f;--gold:#cfaa54;color-scheme:dark}
+html[data-theme="dark"] body{color:var(--ink)!important;background:var(--paper)!important;background-image:none!important}
+html[data-theme="dark"] body>header{background:#151d19!important;border-color:#35413b!important;color:var(--ink)}
+html[data-theme="dark"] .theme-control{color:#b6c3bd}
+html[data-theme="dark"] .theme-control select{color:#edf3ef;background:#29332e;border-color:#4a5b52}
+html[data-theme="dark"] :is(.report,.chart-card,.component-card,.sales-sheet,.cycle-report,.cashflow-report,.aging-chart-card,.lifeline-results,.monitor-trend,.workspace-query-builder,.bapa-chart,.workspace-preview,.membership-posting,.loss-method,.sales-register,.panel,.card){background-color:var(--card)!important;color:var(--ink)!important;border-color:var(--line)!important}
+html[data-theme="dark"] :is(.metrics,.milestones,.breakdown-table,.table-wrap,.component-table){border-color:var(--line)!important}
+html[data-theme="dark"] :is(.metrics article,.milestone,.detail-entry,.detail-drill,.tree-links,.workspace-query-builder,.workspace-schema,.workspace-preview,.bapa-summary>div){background-color:#222c27!important;color:var(--ink)!important;border-color:var(--line)!important}
+html[data-theme="dark"] :is(.toolbar,.monitor-controls,.component-controls,.collector-controls,.aging-controls,.loss-controls,.lifeline-controls,.kwh-controls){background:#202a25!important;color:var(--ink)!important}
+html[data-theme="dark"] :is(.toolbar label,.monitor-controls label,.component-controls label,.collector-controls label,.aging-controls label,.loss-controls label,.lifeline-controls label){color:#d2ddd7!important}
+html[data-theme="dark"] :is(input,select,textarea){color:#edf3ef!important;background:#29332e!important;border-color:#4a5b52!important}
+html[data-theme="dark"] input::placeholder,html[data-theme="dark"] textarea::placeholder{color:#a2b0a9!important}
+html[data-theme="dark"] :is(table th,footer,.report footer){color:#d5dfd9!important;background:#222c27!important;border-color:var(--line)!important}
+html[data-theme="dark"] table td{color:#e1e9e4;border-color:#35413b!important}
+html[data-theme="dark"] tbody tr:hover{background:#28342e!important}
+html[data-theme="dark"] :is(.collection-menu-items,.month-picker-panel,.selected-month-chip,.month-options,.month-options label,.tree-link,.drill-option,.workspace-column){background-color:#222c27!important;color:var(--ink)!important;border-color:var(--line)!important}
+html[data-theme="dark"] :is(.intro>p,.component-note,.chart-copy>p:last-child,.workspace-query-builder p,.mobile-transfer-help,.visual-footer,.membership-summary,.cycle-note,.month-selection-note){color:var(--muted)!important}
+html[data-theme="dark"] :is(.month-picker-trigger,.month-picker-actions button){background:#29332e!important;color:#edf3ef!important;border-color:#4a5b52!important}
+html[data-theme="dark"] :is(.bar-track){fill:#35413b!important}html[data-theme="dark"] .axis-label,html[data-theme="dark"] .legend-label,html[data-theme="dark"] .tick-label,html[data-theme="dark"] .value-label{fill:#d5dfd9!important}html[data-theme="dark"] .grid-line,html[data-theme="dark"] .axis-line{stroke:#536158!important}
+html[data-theme="dark"] :is(.error,.alert,.loss-method,.component-warning){background:#3a2522!important;color:#ffd9d2!important;border-color:#805149!important}
+html[data-theme="dark"] .workspace-editor #query-editor{background:#101715!important;color:#e7efea!important}
+@media(max-width:760px){.theme-control{margin-left:0}.theme-control select{min-width:95px}}
+body.ui-uniform .theme-control{display:flex;align-items:center;width:auto;min-width:0;margin-left:8px;color:var(--muted);font-size:11px}body.ui-uniform .theme-control select{width:auto!important;min-width:105px;height:34px;margin:0;padding:0 9px}

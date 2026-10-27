@@ -9,6 +9,13 @@
 .due-date-days { display: inline-flex; align-items: center; gap: .45rem; margin-top: .7rem; color: #3f4a44; font-size: .78rem; font-weight: 700; }
 .due-date-days input { width: 4.5rem; padding: .35rem .45rem; border: 1px solid #adb9b2; border-radius: 6px; font: inherit; }
 .due-date-days select { padding: .35rem .45rem; border: 1px solid #adb9b2; border-radius: 6px; background: #fff; font: inherit; }
+.month-checks { min-width: 220px; max-width: 420px; margin: 0; padding: .45rem .65rem .55rem; border: 1px solid #adb9b2; border-radius: 8px; background: #fff; }
+.month-checks legend { padding: 0 .25rem; color: #3f4a44; font-size: .78rem; font-weight: 700; }
+#unpaid-bill-months { display: flex; flex-wrap: wrap; gap: .35rem .7rem; max-height: 82px; overflow: auto; }
+#unpaid-bill-months label { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
+#unpaid-bill-months input { width: 1rem; height: 1rem; margin: 0; accent-color: #155f46; }
+#unpaid-load-status.error { color: #9d2d1f; }
+#unpaid-load-status { padding-top: .4rem; padding-bottom: .4rem; }
 .actions select option { background: #fff; color: #17221d; }
 .actions button, .file-button { border: 0; border-radius: 8px; background: #155f46; color: #fff; padding: .78rem 1rem; font: 600 .85rem "DM Sans", sans-serif; cursor: pointer; }
 .actions button:disabled { opacity: .55; cursor: not-allowed; }
@@ -24,6 +31,7 @@ td.status-posted { color: #147046; font-weight: 700; }
 td.status-not-found, td.status-ambiguous { color: #a43b2b; font-weight: 700; }
 .log-result { display: inline-block; padding: .2rem .5rem; border-radius: 999px; font-weight: 700; text-transform: capitalize; }
 .log-result.success { background: #e5f5eb; color: #147046; }
+.log-result.resolved { background: #e5f5eb; color: #155f46; }
 .log-result.failed { background: #fff0ed; color: #a43b2b; }
 .log-result.skipped { background: #fff6dc; color: #855f00; }
 .log-result.partial { background: #fff6dc; color: #855f00; }
@@ -48,3 +56,27 @@ td.status-not-found, td.status-ambiguous { color: #a43b2b; font-weight: 700; }
 .actions .danger-action { background: #9d2d1f; }
 .direct-query-preview { margin-top: 1rem; padding: .85rem 1rem; border-radius: 7px; background: #fff6dc; color: #654b00; font-weight: 700; }
 @media (max-width: 760px) { .actions { width: 100%; } .actions label, .actions select, .actions button, .file-button { width: 100%; } }
+
+.pagination { display: flex; justify-content: flex-end; padding: .85rem 1.4rem 1rem; }
+.page-controls { display: flex; align-items: center; justify-content: flex-end; gap: .75rem; color: #414b46; font-size: .82rem; }
+.page-controls button { border: 1px solid #adb9b2; border-radius: 7px; background: #fff; color: #155f46; padding: .5rem .8rem; font: 600 .82rem "DM Sans", sans-serif; cursor: pointer; }
+.page-controls button:disabled { color: #78827d; opacity: .55; cursor: not-allowed; }
+@media (max-width: 520px) { .page-controls { width: 100%; justify-content: space-between; gap: .4rem; } .page-controls span { text-align: center; } }
+.repost-review { width: min(1200px, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); padding: 0; border: 0; border-radius: 12px; color: #17221d; box-shadow: 0 18px 70px #10251b55; }
+.repost-review::backdrop { background: #10251b88; }
+.repost-review form { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: calc(100vh - 2rem); }
+.repost-review-head { display: flex; align-items: start; justify-content: space-between; gap: 1rem; padding: 1.1rem 1.3rem; border-bottom: 1px solid #d9e1dc; }
+.repost-review-head .eyebrow, .repost-review-head h3, .repost-review-head p { margin: 0; }
+.repost-review-head h3 { margin: .25rem 0; }
+.repost-review-head #repost-review-summary { color: #414b46; }
+.repost-review-close { border: 0; background: transparent; color: #414b46; font-size: 1.6rem; cursor: pointer; }
+.repost-review-table { overflow: auto; padding: 0 1rem; }
+.repost-review-table table { min-width: 1000px; border-collapse: collapse; }
+.repost-review-table th, .repost-review-table td { padding: .65rem; border-bottom: 1px solid #e1e7e3; text-align: left; vertical-align: top; font-size: .82rem; }
+.repost-review-table th { position: sticky; top: 0; background: #f5f8f6; z-index: 1; }
+.repost-check.eligible { color: #147046; font-weight: 800; }
+.repost-check.blocked { color: #a43b2b; font-weight: 800; }
+.repost-review-actions { display: flex; justify-content: flex-end; gap: .6rem; padding: 1rem 1.3rem; border-top: 1px solid #d9e1dc; }
+.repost-review-actions button { padding: .65rem .95rem; border: 1px solid #155f46; border-radius: 7px; background: #fff; color: #155f46; font: 700 .85rem "DM Sans",sans-serif; cursor: pointer; }
+.repost-review-actions .continue-repost { background: #155f46; color: #fff; }
+.repost-review-actions .continue-repost:disabled { opacity: .5; cursor: not-allowed; }
