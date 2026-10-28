@@ -14,6 +14,10 @@
 #unpaid-bill-months { display: flex; flex-wrap: wrap; gap: .35rem .7rem; max-height: 82px; overflow: auto; }
 #unpaid-bill-months label { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
 #unpaid-bill-months input { width: 1rem; height: 1rem; margin: 0; accent-color: #155f46; }
+#paid-bill-months { display: flex; flex-wrap: wrap; gap: .35rem .7rem; max-height: 82px; overflow: auto; }
+#paid-bill-months label { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; font-weight: 600; cursor: pointer; }
+#paid-bill-months input { width: 1rem; min-width: 0; height: 1rem; margin: 0; accent-color: #155f46; }
+#paid-month-selection { margin: .25rem 0 .35rem; color: #627269; font-size: .74rem; }
 #unpaid-load-status.error { color: #9d2d1f; }
 #unpaid-load-status { padding-top: .4rem; padding-bottom: .4rem; }
 .actions select option { background: #fff; color: #17221d; }
@@ -80,3 +84,4 @@ td.status-not-found, td.status-ambiguous { color: #a43b2b; font-weight: 700; }
 .repost-review-actions button { padding: .65rem .95rem; border: 1px solid #155f46; border-radius: 7px; background: #fff; color: #155f46; font: 700 .85rem "DM Sans",sans-serif; cursor: pointer; }
 .repost-review-actions .continue-repost { background: #155f46; color: #fff; }
 .repost-review-actions .continue-repost:disabled { opacity: .5; cursor: not-allowed; }
+.month-error-details{margin:18px 0;padding:18px;background:#fffdf7;border:1px solid #d9ddd7;border-radius:10px}.month-error-details h4{margin:0;font-family:"Fraunces",serif;font-size:22px}.month-error-details footer{display:flex;justify-content:space-between;gap:12px;padding:12px 0;color:#69736e;font-size:12px}.month-error-metric button{display:block;height:auto;min-height:34px;margin-top:10px;padding:6px 10px;border:1px solid #0e7167;border-radius:6px;color:#0e7167;background:transparent;font-size:12px;white-space:normal}.month-error-metric button:disabled{opacity:.5;cursor:default}

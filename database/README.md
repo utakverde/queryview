@@ -42,3 +42,13 @@ mysql -h 127.0.0.1 -P 3306 -u root -p < database/ecpay_audit_mysql84.sql
 ```
 
 The default database is `ecpay_audit`. If using a different audit database name, update the script before importing. Configure the app's separate ECPay audit connection to the actual 8.4 port and client executable (`mysql` on Linux). Billing and Membership connections continue to use their existing source servers. The MySQL 5.5 reporting export above remains separate.
+
+## QueryView Mirror Schema for Billing MySQL 5.5.8
+
+`queryview_mysql55.sql` creates the `queryview` database with MySQL 5.5.8-compatible tables for ECPay posting/query audit records and compromise agreements/payments. It uses `DATETIME` at whole-second precision and avoids foreign keys and MySQL 8-only upsert syntax. Run it with a MySQL account allowed to create the database and tables:
+
+```bash
+mysql -h 192.168.1.100 -P 3306 -u YOUR_USER -p < database/queryview_mysql55.sql
+```
+
+This script creates the schema and performs the local `post_log_v2` to `post_log_v3` compatibility copy. It does not transfer records from the separate MySQL 8.4 server; export/import those records separately if a data mirror is needed. Existing tables are left in place by `CREATE TABLE IF NOT EXISTS`.

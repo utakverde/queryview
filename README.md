@@ -16,6 +16,8 @@ Collection Components displays the revised billing hierarchy from the supplied r
 
 Collector and bank collection performance is available at `/collector-report`.
 
+Compromise agreement and promissory payment monitoring is available at `/compromise-agreement-monitoring`. Register an office, account number, promised amount, optional due date, and remarks; record partial or full payments to track the balance. Agreements and payment history are stored in the configured MySQL 8.4 ECPay audit database.
+
 BAPA mother-meter versus individual-consumer loss analysis is available at `/loss-report`.
 
 ## Install On Another Windows PC
