@@ -123,3 +123,11 @@ body.ui-uniform .route-popup .table-wrap{max-height:60vh!important;overflow:auto
 .dq-pager{display:flex;align-items:center;gap:10px;margin-left:auto}.dq-pager button{height:34px;padding:0 13px}.dq-pager span{min-width:105px;text-align:center;font-variant-numeric:tabular-nums}@media(max-width:600px){.dq-pager{width:100%;justify-content:space-between;margin:8px 0 0}}
 body.ui-uniform .metrics.cashflow-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}body.ui-uniform .metrics.cashflow-metrics strong{font-size:30px}@media(max-width:760px){body.ui-uniform .metrics.cashflow-metrics{grid-template-columns:1fr 1fr}body.ui-uniform .metrics.cashflow-metrics strong{font-size:24px}}
 .area-toggle{height:auto;padding:0;border:0;background:transparent;color:var(--teal);font:inherit;text-align:left;text-decoration:underline;text-underline-offset:3px}.area-toggle:hover{transform:none;filter:none;color:var(--ink)}.area-toggle:focus-visible{outline:2px solid var(--teal);outline-offset:3px}.area-books-row>td{padding:12px 22px 20px!important;background:#edf5f0}.area-books-table{width:100%;background:var(--card)}.area-books-table th,.area-books-table td{padding:9px 14px!important}.area-books-table th:first-child,.area-books-table td:first-child{text-align:left}.area-books-message{margin:4px 0;color:var(--muted);font-size:13px}
+/* Nested report categories in the main navigation. */
+.collection-menu-submenu{position:relative;font-size:12px;font-weight:700}
+.collection-menu-submenu>summary{display:block;padding:11px 14px;border-radius:5px;color:var(--muted);cursor:pointer;list-style:none;white-space:nowrap}
+.collection-menu-submenu>summary::-webkit-details-marker{display:none}
+.collection-menu-submenu>summary::after{content:' ›';float:right;margin-left:18px}
+.collection-menu-submenu[open]>summary,.collection-menu-submenu>summary:hover{background:var(--wash);color:var(--teal)}
+.collection-menu-submenu>.collection-menu-items{position:absolute;top:0;left:100%;min-width:210px;max-height:72vh;overflow:auto;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 25px #17201d25;z-index:110}
+@media(max-width:760px){.collection-menu-submenu>.collection-menu-items{position:static;max-height:none;min-width:0;box-shadow:none;margin:4px 0 0 12px}}
