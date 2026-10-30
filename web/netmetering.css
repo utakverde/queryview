@@ -284,6 +284,8 @@ body.ui-uniform .intro.net-intro>p{max-width:460px;margin:0 0 4px;padding:4px 0 
 .schedule-table-wrap table{width:100%;min-width:900px;border-collapse:collapse}
 .schedule-table-wrap th,.schedule-table-wrap td{padding:6px 8px;border-bottom:1px solid #e2e8ed;text-align:left;font-size:10px;white-space:nowrap}
 .schedule-table-wrap thead th{position:sticky;top:0;background:#e4efff;color:#374b63;font-size:9px;text-transform:uppercase}
+/* Give Manual Post enough vertical room to show all reading inputs and actions. */
+@media(min-width:701px){#bill-dialog{height:min(720px,92vh);max-height:92vh}#bill-dialog .posting-panel{overflow:auto;scrollbar-gutter:stable}}
 @media(max-width:900px){.schedule-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.schedule-controls button{width:100%}}
 @media(max-width:600px){.reading-schedule-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.schedule-controls{grid-template-columns:1fr 1fr}.schedule-controls label:nth-child(4){grid-column:span 2}}
 @media print{.reading-schedule-dialog[open]{position:static!important;display:block!important;width:100%;height:auto;max-height:none;overflow:visible;border:0;box-shadow:none}.reading-schedule-dialog>section{height:auto}.reading-schedule-dialog>section>header button,.schedule-controls,.schedule-note{display:none!important}.schedule-table-wrap{overflow:visible;margin:0;border:0}.schedule-table-wrap table{min-width:0}.schedule-table-wrap th,.schedule-table-wrap td{font-size:8px;padding:4px}}

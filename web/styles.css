@@ -131,3 +131,9 @@ body.ui-uniform .metrics.cashflow-metrics{grid-template-columns:repeat(3,minmax(
 .collection-menu-submenu[open]>summary,.collection-menu-submenu>summary:hover{background:var(--wash);color:var(--teal)}
 .collection-menu-submenu>.collection-menu-items{position:absolute;top:0;left:100%;min-width:210px;max-height:72vh;overflow:auto;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 25px #17201d25;z-index:110}
 @media(max-width:760px){.collection-menu-submenu>.collection-menu-items{position:static;max-height:none;min-width:0;box-shadow:none;margin:4px 0 0 12px}}
+/* Keep deep navigation inside the viewport instead of cascading off-screen. */
+body header nav .collection-menu>.collection-menu-items{max-height:calc(100vh - 150px);overflow-y:auto;overscroll-behavior:contain}
+body header nav .collection-menu-submenu>.collection-menu-items{position:static;top:auto;left:auto;min-width:0;max-height:none;overflow:visible;margin:2px 0 5px 12px;padding:3px 0 3px 7px;border:0;border-left:2px solid var(--line);border-radius:0;box-shadow:none;background:transparent}
+body header nav .collection-menu-submenu>summary{white-space:normal}
+body header nav .collection-menu-submenu>.collection-menu-items a{white-space:normal}
+@media(max-width:760px){body header nav .collection-menu>.collection-menu-items{max-height:calc(100vh - 120px)}}
