@@ -67,13 +67,15 @@ header nav{display:flex;gap:5px;margin-left:auto}header nav a{padding:8px 12px;b
 .collection-menu-items{position:absolute;top:100%;left:0;min-width:210px;display:grid;padding:8px;background:var(--card);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 25px #17201d25;z-index:100}
 .collection-menu.menu-align-right .collection-menu-items{right:0;left:auto}
 header nav .collection-menu-items a{display:block;margin:0;padding:11px 14px;white-space:nowrap}
-body header{position:relative;z-index:100;height:auto;min-height:92px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}
+body header{position:relative;z-index:1000;height:auto;min-height:92px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px}
+body header{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:var(--paper)!important}
+body header nav .collection-menu>.collection-menu-items{background:#fffdf7!important;opacity:1;isolation:isolate;z-index:1000}
 body header nav{overflow:visible!important;flex-wrap:wrap}
 body header nav>*{flex:0 0 auto}
 @media(max-width:760px){.collection-menu-items{position:static;box-shadow:none;margin-top:4px}.collection-menu{max-width:100%}}
 /* Shared report shell; page-specific charts and numeric layouts stay intact. */
 body.ui-uniform{font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
-body.ui-uniform>header{padding:16px 3vw;min-height:88px;height:auto;gap:14px;align-items:center;flex-wrap:wrap;position:relative;z-index:100}
+body.ui-uniform>header{padding:16px 3vw;min-height:88px;height:auto;gap:14px;align-items:center;flex-wrap:wrap;position:relative;z-index:1000}
 body.ui-uniform .site-brand{flex:0 0 auto!important}
 body.ui-uniform .mark{flex:0 0 44px;width:44px;height:44px}
 body.ui-uniform header nav{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-left:auto;overflow:visible!important}

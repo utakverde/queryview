@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Other Charges Collection · SAMELCO II</title>
+<link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/other-charges.css?v=2">
+</head>
+<body class="ui-uniform">
+<header><div class="mark">S II</div><div class="site-brand"><p class="eyebrow">Accounting reports</p><h1>SAMELCO II reports</h1></div><nav aria-label="Main reports"></nav></header>
+<main>
+<section class="intro oc-intro"><div><p class="eyebrow">Receivables and collections</p><h2>Other Charges <em>collection.</em></h2></div><p>Compare Other Charges billed on Regular and BAPA bills with amounts on paid and unpaid bills.</p></section>
+<section class="toolbar oc-toolbar"><label>Office<select id="database"><option value="all">All offices</option></select></label><label>Bill month<select id="bill-month"></select></label><button id="load-report" type="button">Load report</button><button id="export-report" type="button" class="secondary-action">Export detail</button><button id="print-report" type="button" class="secondary-action">Print</button></section>
+<div id="error" class="error" hidden></div>
+<section class="oc-period"><span>Reporting period</span><strong id="period">Loading</strong><span>Reporting scope</span><strong id="scope">All offices</strong><span>Source</span><strong>Regular and BAPA bill histories</strong></section>
+<section class="oc-metrics" id="metrics" aria-label="Other Charges summary"></section>
+<p class="oc-method">Collected amounts are the Other Charges on bills marked paid. Uncollected amounts are on bills not marked paid.</p>
+<section class="report oc-report"><div class="report-head"><div><p class="eyebrow">Office summary</p><h3>Collection position by office</h3></div><p id="updated"></p></div><div class="table-wrap"><table><thead><tr><th>Office</th><th>Bills with charges</th><th>Paid bills</th><th>Unpaid bills</th><th>Amount billed</th><th>Collected</th><th>Uncollected</th><th>Collection rate</th></tr></thead><tbody id="office-rows"></tbody></table></div></section>
+<section class="report oc-report"><div class="report-head"><div><p class="eyebrow">Area summary</p><h3>Collection position by area</h3></div><p>Regular and BAPA combined</p></div><div class="table-wrap"><table><thead><tr><th>Office</th><th>Area</th><th>Bills with charges</th><th>Paid bills</th><th>Unpaid bills</th><th>Amount billed</th><th>Collected</th><th>Uncollected</th><th>Collection rate</th></tr></thead><tbody id="area-rows"></tbody></table></div></section>
+<section class="report oc-report oc-area-book-report"><div class="report-head"><div><p class="eyebrow">Route summary</p><h3>Collection position by area and book</h3></div><p>Regular and BAPA combined</p></div><div class="table-wrap"><table><thead><tr><th>Office</th><th>Area</th><th>Book</th><th>Bills with charges</th><th>Paid bills</th><th>Unpaid bills</th><th>Amount billed</th><th>Collected</th><th>Uncollected</th><th>Collection rate</th></tr></thead><tbody id="area-book-rows"></tbody></table></div></section>
+<section class="report oc-report oc-detail-report"><div class="report-head"><div><p class="eyebrow">Breakdown</p><h3>By bill type and rate code</h3></div><p>Amounts in Philippine pesos</p></div><div class="table-wrap"><table><thead><tr><th>Office</th><th>Bill type</th><th>Rate code</th><th>Bills with charges</th><th>Paid</th><th>Unpaid</th><th>Amount billed</th><th>Collected</th><th>Uncollected</th></tr></thead><tbody id="detail-rows"></tbody></table></div></section>
+</main>
+<script type="module" src="/other-charges.js?v=2"></script>
+</body></html>

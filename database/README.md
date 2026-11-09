@@ -52,3 +52,13 @@ mysql -h 192.168.1.100 -P 3306 -u YOUR_USER -p < database/queryview_mysql55.sql
 ```
 
 This script creates the schema and performs the local `post_log_v2` to `post_log_v3` compatibility copy. It does not transfer records from the separate MySQL 8.4 server; export/import those records separately if a data mirror is needed. Existing tables are left in place by `CREATE TABLE IF NOT EXISTS`.
+
+## Compromise Agreement Tables for MySQL 5.5.8
+
+`compromise_agreements_mysql55.sql` creates only the `compromise_agreement` and `compromise_payment` tables in the default `ecpay_audit` database. The table definitions use whole-second `DATETIME` columns and are compatible with MySQL 5.5.8+:
+
+```bash
+mysql -h YOUR_HOST -P 3306 -u YOUR_USER -p < database/compromise_agreements_mysql55.sql
+```
+
+This is a schema-only export. The current app connection and automatic schema setup still target MySQL 8.4 and use fractional-second timestamps, so importing this file alone does not make the app run against MySQL 5.5.

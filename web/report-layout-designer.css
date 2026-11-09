@@ -1,0 +1,44 @@
+.report-layout-open{position:fixed;right:18px;bottom:18px;z-index:5000;border:1px solid #176b4d;border-radius:8px;background:#176b4d;color:#fff;padding:10px 14px;font:700 12px Arial,sans-serif;box-shadow:0 4px 16px #0003;cursor:pointer}
+.report-layout-dialog{width:min(1160px,96vw);height:min(850px,94vh);max-width:none;max-height:94vh;padding:0;border:1px solid #b9c7bf;border-radius:10px;background:#f5f7f5;box-shadow:0 18px 70px #0005}
+.report-layout-dialog form{height:100%;display:flex;flex-direction:column;min-height:0}
+.report-layout-dialog form>header,.report-layout-dialog form>footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:#e8efeb;border-bottom:1px solid #cbd7d0}
+.report-layout-dialog form>header h2{margin:0;font-size:17px}.report-layout-dialog form>header .eyebrow{margin:0;font-size:9px}
+.report-layout-workspace{display:grid;grid-template-columns:minmax(320px,.82fr) minmax(0,1.18fr);gap:14px;min-height:0;flex:1;padding:14px;overflow:hidden}
+.report-layout-controls{overflow:auto;padding:12px;border:1px solid #d5dfd9;border-radius:8px;background:#fff}
+.report-layout-controls h3,.report-layout-preview-wrap h3{margin:4px 0 9px;font-size:12px;color:#344b40}
+.report-layout-controls>label,.report-layout-fields>label{display:grid;gap:4px;margin:8px 0;color:#52645c;font-size:10px;font-weight:700}
+.report-layout-controls input:not([type=color]),.report-layout-controls select{min-height:32px;width:100%;box-sizing:border-box;padding:5px 7px;border:1px solid #cbd6cf;border-radius:4px;background:#fff}
+.report-layout-fields{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.report-layout-columns{display:grid;gap:4px;max-height:290px;overflow:auto}
+.report-layout-column{display:grid;grid-template-columns:18px 44px minmax(80px,1fr) 27px 27px;align-items:center;gap:5px;padding:4px;border:1px solid #dbe3de;border-radius:4px;background:#fbfcfb;font-size:10px;cursor:grab}
+.report-layout-column label{display:flex;align-items:center;gap:4px;min-width:0}.report-layout-column .layout-column-label{min-width:0;height:24px;padding:2px 5px;font-size:9px}.report-layout-column button{min-height:24px;padding:0;font-size:11px}.layout-drag{color:#819087;text-align:center}
+.report-layout-message{min-height:18px;color:#567064;font-size:10px}
+.report-layout-preview-wrap{min-width:0;overflow:auto;padding:10px;border:1px solid #d5dfd9;border-radius:8px;background:#e2e8e4}
+.report-layout-preview-page{min-height:360px;padding:22px;background:#fff;box-shadow:0 2px 10px #17251d24;font-size:10px}
+.report-layout-preview-page>header{margin-bottom:18px;padding:10px;background:var(--report-layout-header,#e8efeb)}.report-layout-preview-page h2{margin:0;font-size:18px}.report-layout-preview-page p{margin:5px 0 0;font-size:10px}
+.report-layout-preview-page table{width:100%;border-collapse:collapse;font-size:9px}.report-layout-preview-page th,.report-layout-preview-page td{padding:5px;border:1px solid #cbd5ce;text-align:left}.report-layout-preview-page th{background:#e8efeb}.report-layout-preview-page footer{margin-top:20px;padding-top:8px;border-top:1px solid #cbd5ce;font-size:9px}
+.report-layout-dialog form>footer{border-top:1px solid #cbd7d0;border-bottom:0}.report-layout-dialog form>footer span{flex:1}
+.report-layout-print-table,.report-layout-print-header,.report-layout-print-footer{display:none!important}
+@media(max-width:760px){.report-layout-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.report-layout-workspace{grid-template-columns:1fr;grid-template-rows:minmax(340px,1fr) minmax(250px,.8fr);overflow:auto}.report-layout-preview-wrap{min-height:230px}.report-layout-open{right:10px;bottom:10px}}
+@media print{body.report-layout-print-active,body.report-layout-print-active *{font-family:var(--report-layout-font,Arial),sans-serif!important;color:var(--report-layout-color,#18251f)}body.report-layout-print-active .report-layout-print-header,body.report-layout-print-active .report-layout-print-footer{display:block!important}body.report-layout-print-active [data-layout-original="1"]{display:none!important}body.report-layout-print-active .report-layout-print-table{display:table!important;width:100%!important;min-width:0!important;border-collapse:collapse!important}body.report-layout-print-active .report-layout-print-table th{background:var(--report-layout-header,#e8efeb)!important}body.report-layout-print-active.report-layout-size-small{zoom:.86}body.report-layout-print-active.report-layout-size-large{zoom:1.08}body.report-layout-print-active .report-layout-print-header{margin-bottom:12px;padding:8px;background:var(--report-layout-header,#e8efeb)!important}body.report-layout-print-active .report-layout-print-header h1{margin:0;font-size:18px}body.report-layout-print-active .report-layout-print-header p{margin:4px 0 0;font-size:10px}body.report-layout-print-active .report-layout-print-footer{margin-top:18px;padding-top:7px;border-top:1px solid #9ba99f;font-size:9px}}
+
+@media print{body.report-layout-print-active.report-layout-custom-title main>.intro,body.report-layout-print-active.report-layout-custom-title main>.report-head{display:none!important}}
+@media print{body.report-layout-print-active .report-layout-invoice-active .invoice-brand,body.report-layout-print-active .report-layout-invoice-active .invoice-title{background:var(--report-layout-header,#e8efeb)!important}body.report-layout-print-active .report-layout-invoice-active .report-layout-print-footer{display:block!important;margin-top:14px;padding-top:7px;border-top:1px solid #9ba99f;font-size:9px}}
+
+/* Keep the Net Metering invoice designer on one workspace page. */
+.report-layout-dialog[data-report-id="netmetering-invoice"]{width:min(1440px,98vw);height:min(940px,96vh);max-height:96vh}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-workspace{grid-template-columns:minmax(390px,.9fr) minmax(0,1.1fr);gap:10px;padding:10px}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-controls{padding:9px;overflow:auto}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-controls h3{margin:3px 0 5px}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-controls>label,.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-fields>label{margin:4px 0;gap:3px}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-controls input:not([type=color]),.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-controls select{min-height:28px;padding:3px 6px}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 8px}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-columns{max-height:none;overflow:visible}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-column{grid-template-columns:16px 42px minmax(60px,1fr) 25px 25px;padding:2px;gap:3px}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-wrap{display:flex;flex-direction:column;overflow:auto}
+.report-layout-dialog[data-report-id="netmetering-invoice"] #report-layout-preview{flex:1;min-height:0;display:flex;justify-content:center;align-items:flex-start}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page{width:min(100%,680px);min-height:0;aspect-ratio:8.5/11;box-sizing:border-box;padding:clamp(14px,2vw,26px);font-size:clamp(8px,.8vw,10px)}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page table{table-layout:fixed}
+.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page th,.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page td{overflow-wrap:anywhere;padding:4px}
+@media(max-height:760px) and (min-width:761px){.report-layout-dialog[data-report-id="netmetering-invoice"] form>header,.report-layout-dialog[data-report-id="netmetering-invoice"] form>footer{padding:7px 12px}.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-workspace{padding:7px}.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page{padding:14px}.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page>header{margin-bottom:9px;padding:7px}}
+@media(max-width:760px){.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-workspace{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(260px,.8fr);overflow:auto}.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-columns{max-height:none}.report-layout-dialog[data-report-id="netmetering-invoice"] .report-layout-preview-page{width:100%;aspect-ratio:auto;min-height:360px}}

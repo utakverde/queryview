@@ -101,7 +101,7 @@ body.ui-uniform .intro.net-intro>p{max-width:460px;margin:0 0 4px;padding:4px 0 
 .consumer-search-row button{padding:0;font-size:20px}
 .account-search-card>label,.posting-fields label{display:grid;gap:4px;min-width:0;color:#52645c;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .account-search-card>label+label{margin-top:8px}
-.account-search-card select,.posting-fields input{width:100%;min-width:0;height:34px;padding:5px 8px;font-size:11px}
+.account-search-card select,.posting-fields input,.posting-fields select{width:100%;min-width:0;height:34px;padding:5px 8px;font-size:11px}
 .posting-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
 .posting-fields .posting-wide{grid-column:1/-1}
 .posting-fields input[readonly]{background:#f0f3f1;color:#54655d}
@@ -212,7 +212,7 @@ body.ui-uniform .intro.net-intro>p{max-width:460px;margin:0 0 4px;padding:4px 0 
 .account-search-card,.reading-posting-card{padding:12px!important}
 .consumer-search-row{grid-template-columns:minmax(0,1fr) 40px 40px;gap:8px;margin:0 0 10px}
 .consumer-search-row input,.consumer-search-row button{height:40px}
-.account-search-card select,.posting-fields input{height:38px;padding:7px 9px;font-size:12px}
+.account-search-card select,.posting-fields input,.posting-fields select{height:38px;padding:7px 9px;font-size:12px}
 .account-search-card>label,.posting-fields label{gap:5px;font-size:10px;letter-spacing:.025em}
 .account-search-card>label+label{margin-top:10px}
 .posting-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 10px}
@@ -226,30 +226,41 @@ body.ui-uniform .intro.net-intro>p{max-width:460px;margin:0 0 4px;padding:4px 0 
 
 /* Compact desktop entry window modeled on the supplied manual posting screen. */
 @media(min-width:701px){
-  .bill-dialog{width:min(940px,96vw);height:min(560px,92vh);max-height:92vh;border-radius:5px;background:#edf3fb;border:1px solid #aebbd0}
+  .bill-dialog{width:min(940px,96vw);height:min(660px,92vh);max-height:92vh;border-radius:5px;background:#edf3fb;border:1px solid #aebbd0}
   .bill-dialog form>header{height:38px;min-height:38px;flex-basis:38px;padding:4px 12px;background:#dce7f5;border-bottom:1px solid #b8c8df}
   .bill-dialog form>header h2{font:600 15px "DM Sans",sans-serif;margin:0;color:#26374e}
   .bill-dialog form>header .eyebrow{display:none}
   .bill-workspace{grid-template-columns:minmax(0,1.45fr) minmax(335px,.95fr);gap:8px;padding:7px 8px 8px;background:#edf3fb}
-  .account-information{grid-template-rows:116px minmax(0,1fr) 102px;gap:8px}
+  .account-information{grid-template-rows:116px minmax(170px,1fr) minmax(235px,1.15fr);gap:8px}
   .account-information fieldset,.posting-panel fieldset{padding:8px!important;border:1px solid #aabbd3!important;border-radius:4px!important;background:#e4efff!important;box-shadow:none!important}
   .account-information legend,.posting-panel legend{padding:2px 7px;border:1px solid #b2c2d8;border-radius:3px;background:#f6f9ff;color:#26374e;font-size:11px}
   .profile-card dl{grid-template-columns:1fr 1.3fr;gap:2px 12px}
   .profile-card dl>div{grid-template-columns:62px minmax(0,1fr);gap:4px;padding:3px 0;border-bottom-color:#b7c9e0}
   .profile-card dt,.profile-card dd{font-size:10px}
   .profile-card dd{border-bottom:1px solid #50627a;white-space:nowrap}
-  .ledger-card{grid-template-rows:minmax(115px,.75fr) minmax(72px,.65fr);gap:4px}
+  .ledger-card{grid-template-rows:minmax(0,1fr) auto;gap:5px}
+  .ledger-card #bill-preview{min-height:0;overflow:auto;border:0}
+  .consumer-ledger-panel{min-height:0;max-height:118px;overflow:hidden;border-top:1px solid #b7c9e0}
+  .consumer-ledger-panel[open]{height:118px;display:flex;flex-direction:column}
+  .consumer-ledger-panel summary{padding:4px 3px;color:#344b67;font-size:9px;font-weight:700;cursor:pointer}
+  .ledger-card .consumer-ledger{flex:1;min-height:0;overflow:auto}
+  .ledger-card .consumer-ledger-panel[open] .consumer-ledger{max-height:100px}
   .ledger-card #bill-preview,.ledger-card .consumer-ledger{padding:2px;background:#fff}
   .history-card{min-height:0}
+  .history-card #consumption-history{max-height:100%;overflow:auto}
+  #history-months{max-height:210px!important}
   .history-values{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
   .history-values span{font-size:8px}
   .history-values strong{font-size:10px}
+  #history-months{grid-column:1/-1;min-width:0}
+  .history-months,.history-month-table{max-height:112px;overflow:auto}
+  .history-month-table table{width:100%;min-width:0}
   .posting-panel{grid-template-rows:auto minmax(0,1fr) auto auto;gap:7px;padding:0;overflow:auto}
   .consumer-search-row{grid-template-columns:minmax(0,1fr) 42px 42px;gap:4px;margin-bottom:5px}
   .consumer-search-row input,.consumer-search-row button{height:36px}
   .account-search-card>label,.posting-fields label{grid-template-columns:70px minmax(0,1fr);align-items:center;gap:5px;font-size:9px}
   .account-search-card>label+label{margin-top:5px}
-  .account-search-card select,.posting-fields input{height:29px;min-height:29px;padding:3px 6px;font-size:10px}
+  .account-search-card select,.posting-fields input,.posting-fields select{height:29px;min-height:29px;padding:3px 6px;font-size:10px}
   .posting-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 6px}
   .posting-fields label.posting-wide{grid-column:1/-1}
   .posting-fields label.posting-wide input{width:100%}
@@ -341,3 +352,286 @@ body.ui-uniform .intro.net-intro>p{max-width:460px;margin:0 0 4px;padding:4px 0 
 .consumer-manager-dialog>section>footer button{min-height:32px;padding:4px 9px;font-size:10px}
 .consumer-manager-dialog .schedule-note{min-height:15px;padding:0 10px 4px}
 @media(max-width:700px){.consumer-manager-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}.consumer-manager-workspace{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);overflow:hidden}.consumer-manager-query{display:grid;grid-template-columns:1fr 1fr}.consumer-manager-query fieldset{min-width:0}.consumer-manager-dialog>section>footer{flex-wrap:wrap}.consumer-manager-dialog>section>footer span{flex-basis:100%;order:-1}}
+
+.posting-fields label small{font-size:8px;font-weight:500;line-height:1.3;letter-spacing:0;text-transform:none;color:#6a7c72}
+
+.net-invoice{max-width:820px;margin:0 auto;padding:24px;background:#fff;color:#18251f;border:1px solid #d4ded8;border-radius:8px;font:12px/1.45 Arial,sans-serif}.invoice-brand{display:grid;grid-template-columns:50px 1fr auto;gap:12px;align-items:center;padding-bottom:14px;border-bottom:2px solid #266b51}.invoice-brand-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:5px;background:#176b4d;color:white;font-weight:800}.invoice-brand strong,.invoice-brand span,.invoice-brand-location{display:block}.invoice-brand strong{font-size:14px}.invoice-brand span,.invoice-brand-location{color:#5a6c62;font-size:10px}.invoice-title{display:flex;justify-content:space-between;align-items:center;margin:18px 0}.invoice-title p,.invoice-title h2{margin:0}.invoice-title p{color:#4f685b;font-size:9px;font-weight:700;letter-spacing:.14em}.invoice-title h2{font-size:22px;letter-spacing:.06em}.invoice-title>div:last-child{text-align:right}.invoice-title span,.invoice-title strong,.invoice-title small{display:block}.invoice-title span,.invoice-title small{font-size:9px;color:#5a6c62}.invoice-title strong{font-size:14px}.invoice-account{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;padding:12px;background:#f4f7f5}.invoice-account span,.invoice-account strong{display:block}.invoice-account span{font-size:8px;color:#64756c;text-transform:uppercase;letter-spacing:.06em}.invoice-account strong{font-size:10px;overflow-wrap:anywhere}.invoice-reading h3,.invoice-unbundled h3{margin:16px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.07em}.net-invoice table{width:100%;min-width:0!important;border-collapse:collapse}.net-invoice th,.net-invoice td{padding:5px 6px;border-bottom:1px solid #e0e7e2;text-align:right;font-size:9px;white-space:normal}.net-invoice th:first-child,.net-invoice td:first-child{text-align:left}.net-invoice thead th{background:#eef3ef;color:#42584d;font-size:8px;text-transform:uppercase}.invoice-reading>p{margin:5px 0;color:#53665c;font-size:9px}.invoice-subtotal{background:#f7f9f7}.invoice-total{background:#dcefe5;color:#173a32;font-size:11px}.invoice-footer{display:flex;justify-content:space-between;gap:14px;margin-top:14px;padding-top:8px;border-top:1px solid #dce4df;color:#5a6c62;font-size:8px}.invoice-footer span:last-child{text-align:right}@media(max-width:650px){.net-invoice{padding:13px}.invoice-brand{grid-template-columns:40px 1fr}.invoice-brand-location{grid-column:2}.invoice-title h2{font-size:18px}.invoice-account{gap:7px}.net-invoice th,.net-invoice td{padding:4px 3px;font-size:8px}}@page{size:letter portrait;margin:.45in}@media print{body.print-net-invoice .bill-dialog .posting-panel,body.print-net-invoice .bill-dialog form>header,body.print-net-invoice .bill-dialog .bill-actions,body.print-net-invoice .bill-dialog .history-card{display:none!important}body.print-net-invoice .bill-dialog .account-information{display:block!important}body.print-net-invoice .bill-dialog .ledger-card{display:block!important;border:0!important;padding:0!important;box-shadow:none!important}body.print-net-invoice .bill-dialog .ledger-card #bill-preview{display:block!important;overflow:visible!important;min-height:0!important;padding:0!important;border:0!important}body.print-net-invoice .bill-dialog .consumer-ledger,body.print-net-invoice .bill-dialog .ledger-history-table{display:none!important}.net-invoice{max-width:none;margin:0;padding:0;border:0;border-radius:0}.invoice-unbundled,.invoice-reading,.invoice-account{break-inside:avoid}.net-invoice table{page-break-inside:auto}.net-invoice tr{page-break-inside:avoid}.invoice-footer{font-size:8px}}
+
+/* Keep the account ledger available on screen while giving consumption history the lower panel. */
+@media(min-width:701px){.account-information{grid-template-rows:116px minmax(170px,1fr) minmax(235px,1.15fr)}.ledger-card{grid-template-rows:minmax(0,1fr) auto!important}.consumer-ledger-panel{max-height:27px;overflow:hidden;border-top:1px solid #b7c9e0}.consumer-ledger-panel[open]{height:118px;max-height:118px;display:flex;flex-direction:column}.consumer-ledger-panel summary{padding:5px 3px;color:#344b67;font-size:9px;font-weight:700;cursor:pointer}.ledger-card .consumer-ledger{flex:1;min-height:0;overflow:auto}.ledger-card .consumer-ledger-panel[open] .consumer-ledger{max-height:100px}.history-card #consumption-history{max-height:100%;overflow:auto}#history-months{max-height:210px!important}}
+@media print{body.print-net-invoice .bill-dialog .consumer-ledger-panel{display:block!important;height:auto!important;max-height:none!important;overflow:visible!important;margin-top:16px;break-before:page}body.print-net-invoice .bill-dialog .consumer-ledger-panel>summary{display:none!important}body.print-net-invoice .bill-dialog .consumer-ledger{display:block!important;max-height:none!important;overflow:visible!important}body.print-net-invoice .bill-dialog .ledger-history-table{display:block!important}body.print-net-invoice .bill-dialog .ledger-history-table table{min-width:0!important;width:100%!important}body.print-net-invoice .bill-dialog .ledger-card{break-after:page}}
+
+/* Manual Post: billhistory_net rows are the Ledger; keep the live invoice preview for printing only. */
+#bill-dialog .ledger-card{display:flex!important;flex-direction:column!important;gap:0!important}
+#bill-dialog .ledger-card #bill-preview{display:none!important}
+#bill-dialog .ledger-card .consumer-ledger{display:block;flex:1;min-height:0;overflow:auto;padding:2px;background:#fff}
+@media(min-width:701px){#bill-dialog .account-information{grid-template-rows:116px minmax(155px,.75fr) minmax(180px,1.25fr)!important}#bill-dialog .history-card{min-height:0;overflow:hidden}#bill-dialog .history-card #consumption-history{max-height:100%;overflow:auto}#bill-dialog #history-months{max-height:240px!important}}
+@media(max-width:700px){#bill-dialog .account-information .history-card{order:4}#bill-dialog .account-information .ledger-card{order:5;min-height:360px}}
+@media print{body.print-net-invoice #bill-dialog .ledger-card #bill-preview{display:block!important}body.print-net-invoice #bill-dialog .ledger-card .consumer-ledger{display:none!important}}
+
+/* Invoice printing outputs only the statement, without the app backdrop or ledger pages. */
+@page{size:letter portrait;margin:.3in}
+@media print{
+  html,body{width:100%!important;height:auto!important;margin:0!important;padding:0!important;background:#fff!important;color:#111!important;overflow:visible!important}
+  body.print-net-invoice>*:not(#bill-dialog){display:none!important}
+  body.print-net-invoice #bill-dialog[open]{position:static!important;inset:auto!important;display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;transform:none!important;color:#111!important}
+  body.print-net-invoice #bill-dialog::backdrop{background:transparent!important;opacity:0!important}
+  body.print-net-invoice #bill-dialog form{display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important;box-shadow:none!important}
+  body.print-net-invoice #bill-dialog form>header,
+  body.print-net-invoice #bill-dialog .posting-panel,
+  body.print-net-invoice #bill-dialog .history-card,
+  body.print-net-invoice #bill-dialog .bill-actions,
+  body.print-net-invoice #bill-dialog .account-information>legend,
+  body.print-net-invoice #bill-dialog .account-information>:not(.ledger-card),
+  body.print-net-invoice #bill-dialog .ledger-card>legend,
+  body.print-net-invoice #bill-dialog .ledger-card>:not(#bill-preview),
+  body.print-net-invoice #bill-dialog .consumer-ledger-panel{display:none!important}
+  body.print-net-invoice #bill-dialog .account-information,
+  body.print-net-invoice #bill-dialog .ledger-card,
+  body.print-net-invoice #bill-dialog .ledger-card #bill-preview{display:block!important;width:100%!important;height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:0!important;overflow:visible!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;break-before:auto!important;break-after:auto!important;page-break-before:auto!important;page-break-after:auto!important}
+  body.print-net-invoice #bill-dialog .net-invoice{width:100%!important;max-width:none!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important;zoom:1!important;break-inside:avoid!important;page-break-inside:avoid!important}
+  body.print-net-invoice #bill-dialog .net-invoice *{break-inside:avoid-page}
+  body.print-net-invoice #bill-dialog .net-invoice table{page-break-inside:auto!important}
+  body.print-net-invoice #bill-dialog .net-invoice tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  body.print-net-invoice #bill-dialog .net-invoice .invoice-unbundled,
+  body.print-net-invoice #bill-dialog .net-invoice .invoice-reading,
+  body.print-net-invoice #bill-dialog .net-invoice .invoice-account{break-inside:avoid!important;page-break-inside:avoid!important}
+}
+
+.ledger-row-actions{display:flex;gap:4px;justify-content:center}
+.ledger-row-actions button{min-height:24px;padding:2px 6px;font-size:8px;white-space:nowrap}
+.ledger-edit-dialog{width:min(520px,94vw);height:auto;max-height:90vh}
+.ledger-edit-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+.ledger-edit-fields label,.history-year-select{display:grid;gap:4px;color:#52645c;font-size:10px;font-weight:700}
+.ledger-edit-fields input,.history-year-select select{height:34px;padding:5px 8px}
+.ledger-edit-dialog form>footer{display:flex;justify-content:flex-end;padding:10px;border-top:1px solid #d3ddd7}
+.history-year-select{display:flex;align-items:center;gap:6px;margin:5px 0}
+.history-year-select select{height:26px;min-width:85px;padding:2px 6px;font-size:9px}
+.history-graph{min-height:115px;margin:4px 0;padding:4px;border:1px solid #dbe4de;border-radius:4px;background:#fff}
+.history-graph svg{display:block;width:100%;height:108px}
+.history-graph .history-axis{stroke:#bac7bf;stroke-width:1}
+.history-graph .history-bar-import{fill:#287c63}.history-graph .history-bar-export{fill:#d2a438}
+.history-graph text{fill:#607168;font:8px Arial,sans-serif}.history-graph .history-legend{font-size:8px}
+.ledger-history-table th:last-child,.ledger-history-table td:last-child{text-align:center}
+@media(max-width:700px){.ledger-edit-fields{grid-template-columns:1fr}.history-graph{min-height:105px}.history-graph svg{height:98px}}
+
+/* Keep ledger actions as the leading column and give the yearly chart more room. */
+.ledger-history-table th:first-child,.ledger-history-table td:first-child{text-align:center}
+.ledger-history-table table{min-width:900px}
+.history-graph{min-height:190px;padding:8px}
+.history-graph svg{height:176px}
+@media(max-width:700px){.history-graph{min-height:165px}.history-graph svg{height:150px}}
+
+/* Give yearly net-metering consumption trends enough room to read. */
+.history-graph{min-height:226px}
+.history-graph svg{height:210px}
+.history-graph .history-line-import,.history-graph .history-line-export{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.history-graph .history-line-import{stroke:#287c63}
+.history-graph .history-line-export{stroke:#d2a438}
+.history-graph .history-point-import{fill:#287c63}
+.history-graph .history-point-export{fill:#d2a438}
+@media(min-width:701px){#bill-dialog{height:min(82vh,820px);max-height:92vh}#bill-dialog .account-information{grid-template-rows:108px minmax(150px,.75fr) minmax(230px,1.25fr)!important}#bill-dialog .history-graph{min-height:218px}#bill-dialog .history-graph svg{height:204px;min-height:204px}}
+@media(max-width:700px){.history-graph{min-height:210px}.history-graph svg{height:194px}}
+
+.ledger-print-options{width:min(520px,94vw);height:auto;max-height:90vh;padding:0}
+.ledger-print-options form{height:auto;display:grid;grid-template-rows:auto 1fr auto}
+.ledger-print-options form>header{position:static;padding:14px 18px}
+.ledger-print-options-fields{display:grid;gap:14px;padding:18px}
+.ledger-print-options-fields>label:not(.ledger-print-graph){display:grid;gap:6px;color:#43584f;font-size:12px;font-weight:700}
+.ledger-print-options-fields select{min-height:38px;padding:6px 9px}
+.ledger-print-graph{display:flex;align-items:center;gap:8px;color:#43584f;font-size:12px}
+.ledger-print-options form>footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #dce4df}
+.ledger-print-account{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 18px;padding:12px;background:#f4f7f5}
+.ledger-print-account span,.ledger-print-account strong{display:block}
+.ledger-print-account span{font-size:8px;color:#64756c;text-transform:uppercase;letter-spacing:.06em}
+.ledger-print-account strong{font-size:10px;overflow-wrap:anywhere}
+.ledger-print-graph-block{margin:14px 0;break-inside:avoid}
+.ledger-print-graph-block h2{margin:0 0 4px;font-size:12px}
+.ledger-print-graph-block svg{display:block;width:100%;height:auto;max-height:210px}
+.ledger-print-document .invoice-brand-mark{background:#176b4d;color:#fff}
+.ledger-print-table{margin-top:12px;overflow:visible}
+.ledger-print-table table{width:100%;min-width:0!important;table-layout:fixed}
+.ledger-print-table th,.ledger-print-table td{padding:4px 3px;font-size:8px;white-space:normal;overflow-wrap:anywhere}
+.ledger-print-table th{background:#eef3ef}
+.ledger-print-document .history-axis{stroke:#bac7bf;stroke-width:1}
+.ledger-print-document .history-line-import,.ledger-print-document .history-line-export{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.ledger-print-document .history-line-import{stroke:#287c63}.ledger-print-document .history-point-import{fill:#287c63}
+.ledger-print-document .history-line-export{stroke:#d2a438}.ledger-print-document .history-point-export{fill:#d2a438}
+.ledger-print-document svg text{fill:#607168;font:8px Arial,sans-serif}
+@media print{
+  body.print-net-ledger .bill-dialog .posting-panel,body.print-net-ledger .bill-dialog form>header,body.print-net-ledger .bill-dialog .bill-actions,body.print-net-ledger .bill-dialog .history-card{display:none!important}
+  body.print-net-ledger .bill-dialog .account-information{display:block!important}
+  body.print-net-ledger .bill-dialog .ledger-card{display:block!important;border:0!important;padding:0!important;box-shadow:none!important}
+  body.print-net-ledger .bill-dialog .consumer-ledger{display:block!important;overflow:visible!important;padding:0!important;background:#fff!important}
+  body.print-net-ledger .ledger-print-document{max-width:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none}
+  body.print-net-ledger .ledger-print-table{overflow:visible}
+  body.print-net-ledger .ledger-print-table tr{break-inside:avoid}
+  body.print-net-ledger .ledger-print-graph-block{break-inside:avoid}
+}
+@media(max-width:600px){.ledger-print-account{grid-template-columns:1fr}}
+
+/* Existing bill edit uses the Meter Reading Posting panel without a separate dialog. */
+#bill-dialog.is-editing #save-bill{background:#176b4d}
+#bill-dialog.is-editing #print-bill{display:inline-flex}
+#bill-dialog.is-editing #bill-message{display:block}
+
+.edit-confirm-dialog{width:min(560px,94vw);height:auto;max-height:90vh}
+.edit-confirm-summary{margin:10px 14px;padding:10px;border:1px solid #d4ded8;border-radius:4px;background:#f7f9f7;color:#344b42;font-size:11px;line-height:1.6}
+.edit-reason-label{display:grid;gap:6px;margin:12px 14px;color:#344b42;font-size:11px;font-weight:700}
+.edit-reason-label textarea{width:100%;resize:vertical;padding:8px;border:1px solid #b8c7bf;border-radius:4px;font:12px/1.4 Arial,sans-serif}
+.edit-confirm-dialog form>footer{display:flex;justify-content:flex-end;padding:10px 14px;border-top:1px solid #d3ddd7}
+
+.invoice-layout-dialog{width:min(760px,96vw);height:auto;max-height:92vh}
+.invoice-layout-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:14px}
+.invoice-layout-fields>label{display:grid;gap:4px;color:#46594f;font-size:10px;font-weight:700}
+.invoice-layout-fields input:not([type=checkbox]),.invoice-layout-fields select,.invoice-layout-fields textarea{width:100%;min-height:32px;box-sizing:border-box;padding:5px 7px}
+.invoice-layout-fields .layout-check{display:flex;align-items:center;gap:7px;min-height:30px;font-size:10px}
+.invoice-layout-fields .layout-check input{margin:0}
+.invoice-layout-fields .layout-wide{grid-column:1/-1}
+.invoice-layout-dialog form>footer{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #d3ddd7}
+.invoice-layout-dialog form>footer span{flex:1}
+@media(max-width:600px){.invoice-layout-fields{grid-template-columns:1fr}.invoice-layout-fields .layout-wide{grid-column:auto}}
+.net-invoice{--invoice-accent:#176b4d}
+.invoice-brand{border-color:var(--invoice-accent)}
+.invoice-brand-mark{background:var(--invoice-accent)}
+.net-invoice.invoice-text-small{zoom:.88}
+.net-invoice.invoice-text-large{zoom:1.12}
+.net-invoice.invoice-hide-brand .invoice-brand,.net-invoice.invoice-hide-account .invoice-account,.net-invoice.invoice-hide-readings .invoice-reading,.net-invoice.invoice-hide-unbundled .invoice-unbundled,.net-invoice.invoice-hide-footer .invoice-footer{display:none!important}
+
+#bill-dialog.is-editing #cancel-bill-edit{display:inline-flex}
+
+/* Manual Post desktop layout follows the supplied billing-screen reference. */
+@media(min-width:701px){
+  #bill-dialog{width:min(1040px,97vw);height:min(720px,94vh);max-height:94vh;border-radius:5px;background:#edf3fb;border:1px solid #aebbd0}
+  #bill-dialog .bill-workspace{grid-template-columns:minmax(0,1.42fr) minmax(390px,.98fr);gap:8px;padding:7px 8px 8px;background:#edf3fb}
+  #bill-dialog .account-information{grid-template-columns:minmax(0,1fr);grid-template-rows:112px minmax(0,1fr) 154px!important;gap:7px;overflow:hidden}
+  #bill-dialog .account-information>h3{display:none}
+  #bill-dialog .profile-card{grid-row:1;min-height:0}
+  #bill-dialog .ledger-card{grid-row:2;grid-template-rows:minmax(0,1fr)!important;min-height:0;overflow:hidden}
+  #bill-dialog .ledger-card .consumer-ledger{min-height:0;overflow:auto}
+  #bill-dialog .history-card{grid-row:3;min-height:0;overflow:hidden}
+  #bill-dialog .history-card #consumption-history{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr);gap:3px 7px;max-height:100%;overflow:hidden}
+  #bill-dialog .history-card #consumption-history>span{font-size:8px;white-space:nowrap}
+  #bill-dialog .history-card #consumption-history>span strong{font-size:10px}
+  #bill-dialog .history-year-select{justify-content:flex-start;margin:0;font-size:8px}
+  #bill-dialog .history-year-select select{min-width:68px;height:23px}
+  #bill-dialog .history-graph{grid-column:1/-1;min-height:0;height:100%;margin:1px 0 0;padding:2px}
+  #bill-dialog .history-graph svg{height:100%;min-height:82px}
+  #bill-dialog #history-months{display:none}
+  #bill-dialog .posting-panel{grid-template-rows:auto minmax(0,1fr) auto auto;gap:6px;padding:0;overflow:auto}
+  #bill-dialog .account-search-card,#bill-dialog .reading-posting-card{padding:7px!important}
+  #bill-dialog .consumer-search-row{grid-template-columns:minmax(0,1fr) 34px 34px;gap:4px;margin-bottom:5px}
+  #bill-dialog .consumer-search-row input,#bill-dialog .consumer-search-row button{height:30px;min-height:30px}
+  #bill-dialog .account-search-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:4px 7px}
+  #bill-dialog .account-search-card legend{grid-column:1/-1}
+  #bill-dialog .account-search-card .consumer-search-row{grid-column:1/-1}
+  #bill-dialog .account-search-card>label{grid-template-columns:46px minmax(0,1fr);align-items:center;gap:4px;margin:0!important;font-size:8px}
+  #bill-dialog .account-search-card select,#bill-dialog .posting-fields input,#bill-dialog .posting-fields select{height:27px;min-height:27px;padding:3px 5px;font-size:9px}
+  #bill-dialog .posting-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 6px}
+  #bill-dialog .posting-fields label{grid-template-columns:66px minmax(0,1fr);align-items:center;gap:4px;font-size:8px}
+  #bill-dialog .posting-fields label.posting-wide{grid-column:1/-1}
+  #bill-dialog .posting-fields label small{grid-column:2;font-size:7px;line-height:1.15}
+  #bill-dialog .bill-actions{position:static;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:5px;background:#dce7f5;border:1px solid #b7c6d9}
+  #bill-dialog .bill-actions button{min-height:32px;height:auto;padding:4px;font-size:8px;white-space:normal;line-height:1.2}
+  #bill-dialog .bill-actions #save-bill{grid-column:1/-1;min-height:34px}
+  #bill-dialog #bill-message{padding:4px 6px;font-size:8px}
+}
+
+@media(min-width:701px){
+  #bill-dialog.is-teller .posting-fields{display:none!important}
+  #bill-dialog.is-teller #teller-payment-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 8px}
+  #bill-dialog.is-teller #teller-payment-fields label{display:grid;grid-template-columns:66px minmax(0,1fr);align-items:center;gap:5px;font-size:9px}
+  #bill-dialog.is-teller #teller-payment-fields .posting-wide{grid-column:1/-1}
+  #bill-dialog.is-teller #teller-payment-fields input,#bill-dialog.is-teller #teller-payment-fields select{height:30px;min-height:30px;padding:4px 6px;font-size:10px}
+  #bill-dialog.is-teller #preview-bill,#bill-dialog.is-teller #invoice-layout-open,#bill-dialog.is-teller #print-ledger,#bill-dialog.is-teller #cancel-bill-edit,#bill-dialog.is-teller #save-bill{display:none!important}
+  #bill-dialog.is-teller #teller-post-payment{display:block;grid-column:1/-1;min-height:40px;background:#25864e;color:#fff;font-weight:700}
+  #bill-dialog.is-teller [data-row-detail],#bill-dialog.is-teller [data-row-edit]{display:none!important}
+}
+#bill-dialog.is-teller .posting-fields{display:none!important}
+#bill-dialog.is-teller #teller-payment-fields{display:grid;grid-template-columns:1fr;gap:8px}
+#bill-dialog.is-teller #teller-payment-fields label{display:grid;gap:4px;font-size:10px}
+#bill-dialog.is-teller #teller-payment-fields .posting-wide{grid-column:1/-1}
+#bill-dialog.is-teller #teller-payment-fields input,#bill-dialog.is-teller #teller-payment-fields select{box-sizing:border-box;width:100%;min-height:34px;padding:5px 7px}
+#bill-dialog.is-teller #preview-bill,#bill-dialog.is-teller #invoice-layout-open,#bill-dialog.is-teller #print-ledger,#bill-dialog.is-teller #cancel-bill-edit,#bill-dialog.is-teller #save-bill{display:none!important}
+#bill-dialog.is-teller #teller-post-payment{display:block;grid-column:1/-1;min-height:40px;background:#25864e;color:#fff;font-weight:700}
+#bill-dialog.is-teller [data-row-detail],#bill-dialog.is-teller [data-row-edit]{display:none!important}
+
+/* Teller payment collection layout follows the supplied Teller Section screen. */
+#bill-dialog.is-teller .account-information{position:relative}
+#bill-dialog.is-teller .account-information>h3{display:block;position:absolute;z-index:2;top:-2px;left:8px;margin:0;padding:3px 8px;border:1px solid #aabbd3;border-radius:3px;background:#f6f9ff;color:#26374e;font-size:11px}
+#bill-dialog.is-teller #teller-ledger-tabs{display:flex;gap:3px;align-items:end;min-height:27px;margin:0 0 -1px;padding:0 4px;border-bottom:1px solid #879bb5;background:transparent}
+#bill-dialog.is-teller #teller-ledger-tabs button{min-height:26px;padding:3px 8px;border:1px solid #9fb0c6;border-bottom:0;border-radius:4px 4px 0 0;background:#d9e5f6;color:#33485e;font-size:9px}
+#bill-dialog.is-teller #teller-ledger-tabs button.active{background:#fff;font-weight:700}
+#bill-dialog.is-teller .ledger-card .consumer-ledger{background:#fff}
+#bill-dialog.is-teller #teller-payment-fields{display:block}
+#bill-dialog.is-teller .teller-payment-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:3px}
+#bill-dialog.is-teller .teller-payment-grid>label{display:grid;grid-template-columns:62px minmax(0,1fr);align-items:center;gap:4px;min-width:0;font-size:8px;font-weight:600}
+#bill-dialog.is-teller .teller-payment-grid input,#bill-dialog.is-teller .teller-payment-grid select{box-sizing:border-box;width:100%;height:29px;min-height:29px;padding:3px 6px;font-size:10px}
+#bill-dialog.is-teller .teller-total{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-height:39px;padding:4px 9px;border:1px solid #b5c1d0;background:#f8f9fb}
+#bill-dialog.is-teller .teller-total strong{color:#9c3028;font-size:17px}
+#bill-dialog.is-teller .teller-total span{margin-left:auto;color:#27384c;font-size:18px;font-weight:700}
+#bill-dialog.is-teller .teller-method{display:flex;align-items:center;gap:12px;min-width:0;margin:0;padding:4px 7px;border:1px solid #b5c1d0;background:#f8f9fb}
+#bill-dialog.is-teller .teller-method legend{font-size:8px}
+#bill-dialog.is-teller .teller-method label{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:500}
+#bill-dialog.is-teller .teller-method input{width:auto;height:auto;min-height:0;margin:0}
+#bill-dialog.is-teller .teller-auto{grid-column:1/-1;display:flex!important;justify-content:flex-start;gap:6px!important;min-height:20px;font-size:8px!important}
+#bill-dialog.is-teller .teller-auto input{width:auto;height:auto;min-height:0;margin:0}
+#bill-dialog.is-teller #teller-change{background:#f2f3f4}
+#bill-dialog.is-teller .bill-actions{grid-template-columns:1fr 1fr;align-items:stretch}
+#bill-dialog.is-teller .bill-actions #print-bill,#bill-dialog.is-teller .bill-actions #teller-post-payment{grid-column:auto;min-height:48px;height:48px;font-size:10px}
+#bill-dialog.is-teller .bill-actions #teller-post-payment{background:#208347}
+#bill-dialog.is-teller .bill-actions #print-bill{display:inline-flex}
+#bill-dialog.is-teller [data-row-detail],#bill-dialog.is-teller [data-row-edit]{display:none!important}
+#bill-dialog.is-teller .ledger-history-heading{display:none}
+#bill-dialog.is-teller .ledger-history-table tr[hidden]{display:none!important}
+@media(max-width:700px){#bill-dialog.is-teller .account-information>h3{display:none}#bill-dialog.is-teller .teller-payment-grid{grid-template-columns:1fr 1fr}#bill-dialog.is-teller .teller-payment-grid>label{grid-template-columns:58px minmax(0,1fr)}}
+
+/* Net Metering invoice uses the compact thermal receipt format from Bills Inquiry. */
+.net-invoice.invoice-thermal{width:min(100%,440px);max-width:440px;box-sizing:border-box;margin:0 auto;padding:20px 22px;border:0;border-radius:0;background:#fff;color:#26332d;font:11px/1.25 Arial,sans-serif;box-shadow:none}
+.invoice-thermal .invoice-brand{display:flex;justify-content:center;align-items:center;gap:8px;padding:0 0 6px;border:0;text-align:center}
+.invoice-thermal .invoice-mark{display:grid;place-items:center;width:34px;height:34px;flex:none;border:2px solid #35443e;border-radius:50%;font-size:21px;font-weight:700}
+.invoice-thermal .invoice-brand>div strong,.invoice-thermal .invoice-brand>div span{display:block}
+.invoice-thermal .invoice-brand>div strong{font-size:12px}
+.invoice-thermal .invoice-brand>div span{color:#26332d;font-size:9px}
+.invoice-thermal .invoice-title{display:block;margin:8px 0;text-align:center}
+.invoice-thermal .invoice-title h2,.invoice-thermal .invoice-heading{margin:0!important;text-align:center;font:700 17px Arial,sans-serif!important;letter-spacing:.04em}
+.invoice-thermal .invoice-bill-month{margin:7px 0;font-size:10px}
+.invoice-thermal .invoice-consumer{display:block;margin:8px 0;font-size:10px}
+.invoice-thermal .invoice-consumer strong,.invoice-thermal .invoice-consumer span{display:block}
+.invoice-thermal .invoice-consumer strong{font-size:14px}
+.invoice-thermal .invoice-number{margin:6px 0;padding-bottom:5px;border-bottom:1px solid #8c9690;font-size:10px}
+.invoice-thermal table{width:100%;min-width:0!important;margin:5px 0;border-collapse:collapse;white-space:normal;font:9px Arial,sans-serif}
+.invoice-thermal th,.invoice-thermal td{padding:3px 4px;border:1px solid #aeb7b1;text-align:right;font-size:8px;font-weight:400;vertical-align:top;white-space:normal}
+.invoice-thermal th{background:#edf0ed;color:#26332d;font-weight:700;text-align:center;letter-spacing:0}
+.invoice-thermal td:first-child{text-align:left}
+.invoice-thermal .invoice-reading th,.invoice-thermal .invoice-reading td{text-align:center!important}
+.invoice-thermal .invoice-components th:first-child,.invoice-thermal .invoice-components td:first-child{text-align:left}
+.invoice-thermal .invoice-components th:nth-child(2),.invoice-thermal .invoice-components td:nth-child(2){width:38px}
+.invoice-thermal .invoice-components th:nth-child(3),.invoice-thermal .invoice-components td:nth-child(3){width:38px}
+.invoice-thermal .invoice-components th:nth-child(4),.invoice-thermal .invoice-components td:nth-child(4){width:58px}
+.invoice-thermal .invoice-components th:last-child,.invoice-thermal .invoice-components td:last-child{width:67px}
+.invoice-thermal .invoice-components .invoice-section th{background:#26332d;color:#fff;text-align:left;font-weight:700}
+.invoice-thermal .invoice-components .invoice-subtotal th,.invoice-thermal .invoice-components .invoice-subtotal td{font-weight:700;background:#edf2ee}
+.invoice-thermal .invoice-tax-sales{margin-top:8px;border-top:1px solid #b9c4bd}
+.invoice-thermal .invoice-tax-sales th{text-align:left;font-weight:700}
+.invoice-thermal .invoice-tax-sales td{text-align:left}
+.invoice-thermal .invoice-grand-total{display:flex;justify-content:space-between;margin-top:8px;padding:7px 8px;border-top:2px solid #28352f;border-bottom:2px solid #28352f;background:#fff;color:#26332d;font-size:14px;font-weight:700}
+.invoice-thermal .invoice-grand-total strong{font-size:18px}
+.invoice-thermal .invoice-payment{display:grid;gap:3px;margin-top:8px;padding:7px;border:1px solid #aeb7b1;font-size:9px}
+.invoice-thermal .invoice-accreditation{display:grid;gap:2px;margin-top:7px;padding-top:6px;border-top:1px solid #aeb7b1;text-align:center;font-size:8px;line-height:1.15}
+@media print{.net-invoice.invoice-thermal{width:7.7in;max-width:7.7in;margin:0 auto;padding:0;font-size:9px}.invoice-thermal .invoice-brand>div strong{font-size:10px}.invoice-thermal th,.invoice-thermal td{font-size:8px;padding:2px 3px}.invoice-thermal .invoice-components tr,.invoice-thermal .invoice-reading tr{break-inside:avoid;page-break-inside:avoid}.invoice-thermal .invoice-brand,.invoice-thermal .invoice-title,.invoice-thermal .invoice-consumer,.invoice-thermal .invoice-number,.invoice-thermal .invoice-payment,.invoice-thermal .invoice-accreditation{break-inside:avoid;page-break-inside:avoid}}
+
+/* Keep the billing invoice compact and centered, regardless of shared report print settings. */
+@media print{
+  body.print-net-invoice #bill-dialog .net-invoice.invoice-thermal{
+    width:7.7in!important;
+    max-width:7.7in!important;
+    min-height:0!important;
+    margin:0 auto!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+    zoom:1!important;
+  }
+}

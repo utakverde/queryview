@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Bills Inquiry · SAMELCO II</title><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/bills-inquiry.css?v=14"></head>
+<body class="ui-uniform">
+<header><div class="mark" aria-hidden="true">S II</div><div class="site-brand"><p class="eyebrow">Billing System</p><h1>SAMELCO II reports</h1></div><nav></nav></header>
+<main>
+  <section class="intro"><div><p class="eyebrow">Regular + BAPA</p><h2>Bills Inquiry</h2></div><p>Search bill history using one field at a time. Choose an office for faster results. This inquiry is read-only.</p></section>
+  <form id="inquiry-form" class="toolbar bills-inquiry-toolbar"><label>Office<select id="database"><option value="all">All four offices</option></select></label><label>Filter by<select id="search-field"><option value="account">Account number</option><option value="name">Consumer name</option><option value="serial">Meter serial</option></select></label><label class="inquiry-query-label"><span id="query-label">Account number</span><input id="query" type="search" minlength="3" maxlength="80" required placeholder="Starts with…"></label><button id="search-button" type="submit">Search bills</button></form>
+  <p id="status" role="status" aria-live="polite">Choose a filter, enter at least 3 starting characters, then search.</p>
+  <div id="error" class="error" hidden></div>
+  <section class="report"><div class="report-head"><h3>Master accounts</h3><span id="result-count"></span></div><div class="table-wrap"><table><thead><tr><th>Office</th><th>Source</th><th>Account number</th><th>Consumer name</th><th>Meter serial</th><th>Address</th><th>Area</th><th>Book</th><th>Connection status</th><th>Ledger</th></tr></thead><tbody id="rows"><tr><td colspan="10" class="empty">Search to view matching master accounts.</td></tr></tbody></table></div></section>
+  <dialog id="ledger-dialog" class="ledger-dialog"><div class="report-head"><div><h3 id="ledger-title">Bill ledger</h3><p id="ledger-meta"></p></div><button id="ledger-close" type="button">Close</button></div><div class="table-wrap"><table><thead><tr><th>Bill month</th><th>kWh</th><th>Total bill</th><th>Status</th><th>Date paid</th><th>OR collection</th><th>Invoice</th></tr></thead><tbody id="ledger-rows"></tbody></table></div></dialog>
+  <dialog id="invoice-dialog" class="invoice-dialog"><header><div><p class="eyebrow">SAMELCO II · BILL HISTORY</p><h2>Bill invoice</h2></div><div class="invoice-actions"><button id="invoice-print" type="button">Print</button><button id="invoice-close" type="button">Close</button></div></header><div id="invoice-content" class="invoice-content"></div></dialog>
+</main><script type="module" src="/bills-inquiry.js?v=14"></script></body></html>
