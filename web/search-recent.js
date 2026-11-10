@@ -1,0 +1,16 @@
+const historyLimit=4,storagePrefix='lantern-search-recent-v1:',attached=new WeakSet();
+const escapeText=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+function historyKey(input){return `${storagePrefix}${location.pathname}|${input.id||input.name||input.placeholder||'search'}`}
+function read(input){try{const value=JSON.parse(localStorage.getItem(historyKey(input))||'[]');return Array.isArray(value)?value.filter(item=>typeof item==='string'&&item.trim()).slice(0,historyLimit):[]}catch{return[]}}
+function remember(input){const value=input.value.trim();if(value.length<2)return;const next=[value,...read(input).filter(item=>item.toLocaleLowerCase()!==value.toLocaleLowerCase())].slice(0,historyLimit);try{localStorage.setItem(historyKey(input),JSON.stringify(next))}catch{}render(input)}
+function render(input){const panel=input.parentElement.querySelector(':scope > .lantern-search-recent'),terms=read(input);if(!panel)return;panel.innerHTML=`<span class="lantern-search-label">Recent searches</span><div class="lantern-search-chips">${terms.map(term=>`<button type="button" class="lantern-search-chip" data-search-term="${escapeText(term)}"><span aria-hidden="true">◷</span>${escapeText(term)}</button>`).join('')||'<span class="lantern-search-empty">Your recent searches will appear here.</span>'}</div><span class="lantern-search-hint">Tap a search to reuse it</span>`}
+function attach(input){if(attached.has(input))return;attached.add(input);input.setAttribute('autocomplete','off');input.setAttribute('autocorrect','off');input.setAttribute('autocapitalize','off');const parent=input.parentElement;if(!parent)return;parent.classList.add('lantern-search-host');const panel=document.createElement('div');panel.className='lantern-search-recent';panel.hidden=true;panel.setAttribute('aria-label','Recent searches');parent.append(panel);render(input);
+  input.addEventListener('focus',()=>{render(input);panel.hidden=false;parent.classList.add('lantern-search-open')});
+  input.addEventListener('blur',()=>setTimeout(()=>{if(!parent.contains(document.activeElement)){panel.hidden=true;parent.classList.remove('lantern-search-open')}},140));
+  input.addEventListener('keydown',event=>{if(event.key==='Enter')remember(input);if(event.key==='Escape'){panel.hidden=true;parent.classList.remove('lantern-search-open');input.blur()}});
+  input.addEventListener('blur',()=>remember(input));
+  panel.addEventListener('pointerdown',event=>{if(event.target.closest('button'))event.preventDefault()});
+  panel.addEventListener('click',event=>{const button=event.target.closest('[data-search-term]');if(!button)return;input.value=button.dataset.searchTerm;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}));panel.hidden=true;parent.classList.remove('lantern-search-open');input.focus()});
+}
+function scan(root=document){if(root.matches?.('input[type="search"]'))attach(root);root.querySelectorAll?.('input[type="search"]').forEach(attach)}
+scan();new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(node=>{if(node.nodeType===1)scan(node)}))).observe(document.documentElement,{childList:true,subtree:true});

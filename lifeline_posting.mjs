@@ -86,15 +86,15 @@ export function createLifelinePosting({ databases, sql, auditDb, invalidate }) {
     const audit = auditDb.prepare('INSERT INTO lifeline_paid_batch(batch_id,bill_month,paid_date,reference,requested_count,affected_count,created_at,details) VALUES(?,?,?,?,?,?,?,?)');
     audit.run(batchId, value.billMonth, value.paidDate, value.reference, rows.length, 0, createdAt, JSON.stringify({ status: 'posting', tellerAccounts: value.tellerAccounts, results }));
     for (const group of groupsFor(rows.filter(row => row.status === 'ready'))) {
-      const [history, master] = sources[group.source], statements = ['START TRANSACTION'];
+      const [history, master] = sources[group.source], statements = ['START TRANSACTION;'];
       for (const row of group.items) {
         const index = rows.indexOf(row), teller = value.tellerAccounts[row.database];
-        statements.push(`UPDATE ${history} bh INNER JOIN ${master} m ON m.Code=bh.Code SET bh.flag_paid='Y',bh.date_paid=${quote(value.paidDate)},bh.ORCollection=${quote(value.reference)},bh.collector_code=${quote(teller)} WHERE bh.Entry=${row.entry} AND bh.BillMonth=${quote(value.billMonth)} AND bh.AccountNumber=${quote(row.accountNumber)} AND bh.Code=${quote(row.code)} AND bh.TotalBill=0 AND bh.LifelineDiscSubs=${Number(row.lifelineDiscSubs)} AND bh.LifelineDiscSubs<0 AND m.flagLifeline=${Number(row.lifelineFlag)} AND m.flagLifeline IN (1,2) AND COALESCE(bh.Grid,0)<>0 AND UPPER(TRIM(COALESCE(bh.flag_paid,'')))<>'Y' AND COALESCE(DATE_FORMAT(bh.date_paid,'%Y-%m-%d'),'')=${quote(row.datePaid)} AND COALESCE(bh.ORCollection,'')=${quote(row.orCollection)} AND COALESCE(CAST(bh.collector_code AS CHAR),'')=${quote(row.collectorCode)}`);
-        statements.push(`SELECT ${index},ROW_COUNT()`);
+        statements.push(`UPDATE ${history} bh INNER JOIN ${master} m ON m.Code=bh.Code SET bh.flag_paid='Y',bh.date_paid=${quote(value.paidDate)},bh.ORCollection=${quote(value.reference)},bh.collector_code=${quote(teller)} WHERE bh.Entry=${row.entry} AND bh.BillMonth=${quote(value.billMonth)} AND bh.AccountNumber=${quote(row.accountNumber)} AND bh.Code=${quote(row.code)} AND bh.TotalBill=0 AND bh.LifelineDiscSubs=${Number(row.lifelineDiscSubs)} AND bh.LifelineDiscSubs<0 AND m.flagLifeline=${Number(row.lifelineFlag)} AND m.flagLifeline IN (1,2) AND COALESCE(bh.Grid,0)<>0 AND UPPER(TRIM(COALESCE(bh.flag_paid,'')))<>'Y' AND COALESCE(DATE_FORMAT(bh.date_paid,'%Y-%m-%d'),'')=${quote(row.datePaid)} AND COALESCE(bh.ORCollection,'')=${quote(row.orCollection)} AND COALESCE(CAST(bh.collector_code AS CHAR),'')=${quote(row.collectorCode)};`);
+        statements.push(`SELECT ${index},ROW_COUNT();`);
       }
-      statements.push('COMMIT');
+      statements.push('COMMIT;');
       try {
-        const changed = new Map(parse(await sql(group.database, statements.join(';')), ['index', 'updated']).map(row => [Number(row.index), Number(row.updated)]));
+        const changed = new Map(parse(await sql(group.database, statements.join('\n')), ['index', 'updated']).map(row => [Number(row.index), Number(row.updated)]));
         for (const row of group.items) {
           const index = rows.indexOf(row), updated = changed.get(index);
           results[index] = { ...results[index], updated: updated === 1 ? 1 : 0, status: updated === 1 ? 'success' : updated === 0 ? 'skipped' : 'failed', reason: updated === 1 ? 'Posted as paid' : updated === 0 ? 'Record changed or was paid after preview; no update made' : 'No confirmed update result; check the live bill before retrying' };
