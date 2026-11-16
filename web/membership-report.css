@@ -1,0 +1,56 @@
+.membership-report-page{min-height:100vh;background:radial-gradient(circle at 10% 0%,#e0f0e7 0,transparent 35%),#f4f2e9;color:#18352d}
+.membership-report-page main{width:min(1500px,94vw);padding-bottom:48px}
+.membership-report-page header .site-brand h1{margin:0}
+.membership-report-page header nav a.active{color:#147d73;font-weight:700}
+.membership-title{align-items:center;margin:20px 0 14px;padding:20px 24px;border:1px solid #d9e1dc;border-radius:16px;background:#fffefa}
+.membership-title h2{margin:4px 0;font:600 clamp(24px,3vw,34px)/1.1 Fraunces,Georgia,serif;color:#17352d}
+.membership-title>div>p:last-child{margin:6px 0 0;color:#687a71;font-size:13px}
+.membership-title #membership-updated{margin:0;color:#718078;font-size:12px;text-align:right}
+.membership-report-filters{display:grid;grid-template-columns:repeat(2,minmax(180px,1fr)) auto;align-items:end;gap:14px;padding:18px 20px;margin-bottom:12px;background:#172720;border-radius:14px;color:#eaf2ed}
+.membership-report-filters label{display:grid;gap:7px;color:#c4d0c8;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.membership-report-filters input{height:42px;min-width:0;padding:8px 11px;border:1px solid #53645b;border-radius:9px;background:#24352d;color:#f5faf7;font:500 14px "DM Sans",sans-serif;color-scheme:dark}
+.membership-report-filters button{height:42px;padding:0 18px;border:0;border-radius:9px;background:#23a48f;color:#fff;font-weight:700;cursor:pointer}
+.membership-report-filters button:disabled{opacity:.65;cursor:wait}
+.membership-report-status{min-height:20px;margin:8px 2px 12px;color:#60756a;font-size:12px}
+.membership-report-status.error{color:#a13d35}
+.sd-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:16px}
+.sd-summary article{min-width:0;padding:16px 18px;border:1px solid #d7e1da;border-radius:15px;background:#fffefa;box-shadow:0 12px 28px -24px #10271e}
+.sd-summary span{display:block;color:#64796e;font-size:12px;font-weight:600}
+.sd-summary strong{display:block;margin-top:5px;color:#19392f;font-size:clamp(20px,2vw,29px);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.sd-summary small{display:block;margin-top:3px;color:#168774;font-size:12px;font-weight:600}
+.sd-quality-note{padding:11px 14px;margin:0 0 16px;border:1px solid #e8d6ae;border-radius:10px;background:#fff8e8;color:#705518;font-size:12px}
+.sd-charts{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:16px;margin-bottom:16px}
+.sd-panel{min-width:0;padding:20px;border:1px solid #dce4df;border-radius:16px;background:#fffefa;box-shadow:0 14px 32px -26px #10271e}
+.sd-panel-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:15px;margin-bottom:12px}
+.sd-panel-heading .eyebrow{margin:0;color:#188674;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.sd-panel-heading h3{margin:4px 0 0;color:#18372e;font:600 21px/1.15 Fraunces,Georgia,serif}
+.sd-panel-heading>span{color:#718178;font-size:11px;white-space:nowrap}
+.sd-month-chart{max-width:100%;overflow-x:auto;padding:8px 2px 5px}
+.sd-month-bars{display:flex;align-items:stretch;gap:7px;min-width:max-content;height:250px;padding:0 3px;border-bottom:1px solid #dce5df}
+.sd-month-bar{flex:0 0 44px;display:grid;grid-template-rows:24px 1fr 30px;gap:5px;min-width:0;text-align:center}
+.sd-month-bar>strong{align-self:end;overflow:hidden;color:#50665b;font-size:9px;white-space:nowrap}
+.sd-month-track{display:flex;align-items:flex-end;justify-content:center;height:100%;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),#edf1ed calc(25% - 1px),#edf1ed 25%)}
+.sd-month-track i{display:block;width:68%;min-height:2px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#32b49c,#147d73)}
+.sd-month-bar>span{align-self:center;color:#576c62;font-size:10px;font-weight:600;white-space:nowrap}
+.sd-area-chart{display:grid;gap:10px;max-height:300px;overflow:auto;padding:5px 2px}
+.sd-area-row{display:grid;grid-template-columns:minmax(70px,105px) minmax(45px,1fr) auto;gap:8px;align-items:center;font-size:11px}
+.sd-area-name{overflow:hidden;color:#344b40;text-overflow:ellipsis;white-space:nowrap}
+.sd-area-track{height:10px;overflow:hidden;border-radius:99px;background:#e9eeea}
+.sd-area-track i{display:block;height:100%;border-radius:99px;background:#168c7b}
+.sd-area-value{color:#40564b;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sd-detail-panel{margin-bottom:16px}
+.sd-detail-heading{align-items:center;margin-bottom:16px}
+.sd-detail-heading p:last-child{margin:5px 0 0;color:#718178;font-size:12px}
+.sd-detail-heading>label{display:grid;gap:5px;min-width:min(340px,40%);color:#607469;font-size:11px;font-weight:700}
+.sd-detail-heading input{height:38px;padding:8px 11px;border:1px solid #d1dcd5;border-radius:8px;background:#fff;color:#19372e;font:500 13px "DM Sans",sans-serif}
+.sd-table-wrap{max-height:560px;overflow:auto;border:1px solid #e0e7e2;border-radius:10px}
+.sd-table-wrap table{width:100%;min-width:900px;border-collapse:collapse;font-size:12px}
+.sd-table-wrap th,.sd-table-wrap td{padding:10px 12px;border-bottom:1px solid #e9eeea;text-align:left;white-space:nowrap}
+.sd-table-wrap thead{position:sticky;top:0;z-index:1;background:#edf3ef;color:#536a5e}
+.sd-table-wrap tbody tr:hover{background:#f2f8f4}
+.sd-table-wrap td.amount{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#176b5b}
+.sd-source-note{margin:0;color:#718178;font-size:11px}
+.sd-source-note code{color:#50665b}
+.sd-empty{padding:28px 12px!important;text-align:center!important;color:#728178}
+@media(max-width:900px){.sd-charts{grid-template-columns:1fr}.sd-area-chart{max-height:260px}.sd-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.membership-title{display:block;padding:17px}.membership-title #membership-updated{margin-top:10px;text-align:left}.membership-report-filters{grid-template-columns:1fr;padding:15px}.membership-report-filters button{width:100%}.sd-summary{grid-template-columns:1fr 1fr;gap:9px}.sd-summary article{padding:13px}.sd-summary strong{font-size:19px}.sd-summary small{font-size:10px}.sd-panel{padding:15px}.sd-panel-heading{align-items:flex-start;flex-direction:column;gap:4px}.sd-detail-heading{flex-direction:column}.sd-detail-heading>label{width:100%;min-width:0}.sd-area-row{grid-template-columns:minmax(60px,90px) minmax(35px,1fr) auto;gap:6px}.sd-area-value{font-size:10px}}

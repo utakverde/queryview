@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Membership · Billing Account Verification</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/membership-report.css?v=2">
+  <link rel="stylesheet" href="/membership-verification.css?v=1">
+</head>
+<body class="membership-report-page ui-uniform">
+  <header>
+    <div class="mark" aria-hidden="true">M</div>
+    <div class="site-brand"><p class="eyebrow">Membership workspace</p><h1>Membership</h1></div>
+    <nav aria-label="Membership reports"><a href="/membership-report">Security Deposit</a><a class="active" href="/membership-account-verification">Account verification</a><a href="/itdata#membership-posting">Membership payments</a></nav>
+    <div class="live"><i></i> Live database comparison</div>
+  </header>
+  <main>
+    <div class="component-title membership-title"><div><p class="eyebrow">Membership replica · billing databases</p><h2>Account verification</h2><p>Checks each distinct replica AssignAccountNo against regular and BAPA account records in every configured billing office.</p></div><p id="verification-updated"></p></div>
+    <div class="verification-actions"><p id="verification-status" role="status" aria-live="polite">Loading account verification…</p><div><button id="verification-refresh" type="button">Refresh comparison</button><button id="verification-export" type="button" disabled>Export accounts + SD to XLS</button></div></div>
+    <section id="verification-summary" class="sd-summary verification-summary" aria-label="Account verification summary"></section>
+    <p class="verification-method">Security Deposit totals and payment details are joined to each replica account by AssignAccountNo. Repeated joined payments with the same account, ApplyID, amount, date, OR, and source count once. A billing match ignores letter case and leading/trailing spaces. Office match counts may overlap. The XLS export includes all accounts and SD payment records, regardless of visible filters.</p>
+    <section class="verification-office-panel sd-panel"><div class="sd-panel-heading"><div><p class="eyebrow">Office comparison</p><h3>Accounts found in each billing office</h3></div><span>Regular + BAPA tables</span></div><div class="sd-table-wrap"><table><thead><tr><th>Billing office</th><th>Billing accounts</th><th>Replica accounts found</th><th>Replica accounts missing</th></tr></thead><tbody id="verification-offices"></tbody></table></div></section>
+    <section class="sd-panel verification-detail-panel"><div class="sd-panel-heading verification-detail-heading"><div><p class="eyebrow">Replica account list</p><h3>Verification details</h3><p id="verification-page-note">Each row includes Security Deposit totals and its latest deposit details.</p></div><div class="verification-filters"><label>Search account<input id="verification-search" type="search" placeholder="Enter an account number"></label><label>Result<select id="verification-filter"><option value="all">All accounts</option><option value="found">Found</option><option value="missing">Missing</option></select></label></div></div>
+      <div class="sd-table-wrap verification-table-wrap" tabindex="0" aria-label="Replica account verification results"><table><thead><tr><th>Membership account</th><th>Billing status</th><th>SD total</th><th>SD payments</th><th>Latest SD date</th><th>Latest SD OR</th><th>Matched offices</th><th>Matched billing table(s)</th></tr></thead><tbody id="verification-rows"></tbody></table></div>
+      <footer class="verification-pager"><span id="verification-count"></span><div><button id="verification-prev" type="button">Previous</button><span id="verification-page"></span><button id="verification-next" type="button">Next</button></div></footer>
+    </section>
+    <details class="sd-panel verification-sd-entries"><summary>Security Deposit payment details <span id="verification-sd-count"></span></summary><div class="verification-sd-controls"><p>Payment rows are joined to the account match result by Membership AssignAccountNo.</p><label>Search account, ApplyID, or OR<input id="verification-sd-search" type="search" placeholder="Account, ApplyID, SD OR"></label></div><div class="sd-table-wrap verification-sd-table-wrap" tabindex="0" aria-label="Security Deposit payment detail records"><table><thead><tr><th>Deposit date</th><th>Membership account</th><th>Billing status</th><th>ApplyID</th><th>SD OR</th><th>SD amount</th><th>Replica source</th><th>Matched office(s)</th></tr></thead><tbody id="verification-sd-rows"></tbody></table></div><footer class="verification-pager"><span id="verification-sd-result-count"></span><div><button id="verification-sd-prev" type="button">Previous</button><span id="verification-sd-page"></span><button id="verification-sd-next" type="button">Next</button></div></footer></details>
+    <p class="sd-source-note">Replica source: <code>membership_replica.payment_membership_replica.AssignAccountNo</code>. Billing sources: each configured office’s <code>master</code>, <code>master_bm</code>, and <code>master_bi</code> tables.</p>
+  </main>
+  <script type="module" src="/membership-verification.js?v=1"></script>
+</body>
+</html>

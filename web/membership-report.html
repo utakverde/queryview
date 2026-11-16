@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Membership · Security Deposit Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/membership-report.css?v=1">
+</head>
+<body class="membership-report-page ui-uniform">
+  <header>
+    <div class="mark" aria-hidden="true">M</div>
+    <div class="site-brand"><p class="eyebrow">Membership workspace</p><h1>Membership</h1></div>
+    <nav aria-label="Main reports"><a href="/">Reports</a><a class="active" href="/membership-report">Security Deposit</a><a href="/membership-account-verification">Account verification</a><a href="/itdata#membership-posting">Membership payments</a></nav>
+    <div class="live"><i></i> MySQL replica</div>
+  </header>
+  <main>
+    <div class="component-title membership-title"><div><p class="eyebrow">Security Deposit · SDeposit</p><h2>Security Deposit report</h2><p>Collections from the replicated Membership Payments table, joined to MembershipDetails by ApplyID.</p></div><p id="membership-updated"></p></div>
+    <form id="membership-report-filters" class="membership-report-filters">
+      <label>Deposit date from<input id="sd-from" type="date" value="2013-01-01" required></label>
+      <label>Deposit date to<input id="sd-to" type="date" required></label>
+      <button type="submit">Refresh report</button>
+    </form>
+    <p id="membership-report-status" class="membership-report-status" role="status" aria-live="polite">Loading Security Deposit data from the Membership replica…</p>
+    <section id="sd-summary" class="sd-summary" aria-label="Security Deposit summary"></section>
+    <p id="sd-quality-note" class="sd-quality-note" hidden></p>
+    <section class="sd-charts" aria-label="Security Deposit analysis">
+      <article class="sd-panel sd-month-panel"><div class="sd-panel-heading"><div><p class="eyebrow">Trend</p><h3>Security Deposits by month</h3></div><span>Amount paid</span></div><div id="sd-month-chart" class="sd-month-chart"></div></article>
+      <article class="sd-panel sd-area-panel"><div class="sd-panel-heading"><div><p class="eyebrow">Member location</p><h3>Security Deposits by area</h3></div><span>Ranked by amount</span></div><div id="sd-area-chart" class="sd-area-chart"></div></article>
+    </section>
+    <section class="sd-panel sd-detail-panel">
+      <div class="sd-panel-heading sd-detail-heading"><div><p class="eyebrow">Source records</p><h3>Security Deposit details</h3><p>Search ApplyID, receipt OR, account, member, or area. Up to 500 matching records are shown.</p></div><label>Find records<input id="sd-search" type="search" maxlength="100" placeholder="ApplyID, OR, account, member, area"></label></div>
+      <div class="sd-table-wrap" tabindex="0" aria-label="Security Deposit detail records"><table><thead><tr><th>Deposit date</th><th>ApplyID</th><th>Member</th><th>Account no.</th><th>Area</th><th>Book</th><th>SD OR</th><th>Source</th><th>Deposit amount</th></tr></thead><tbody id="sd-detail-rows"></tbody></table></div>
+    </section>
+    <p class="sd-source-note">Source: <code>membership_replica.payment_membership_replica</code>, source <code>main</code>. Repeated joined rows with the same ApplyID, deposit amount, date, and OR are counted once. Rows without a deposit date are excluded from date-filtered totals.</p>
+  </main>
+  <script type="module" src="/membership-report.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+.verification-actions{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:12px 0}
+.verification-actions p{margin:0;color:#60756a;font-size:12px}
+.verification-actions p.error{color:#a13d35}
+.verification-actions>div{display:flex;gap:9px;flex-wrap:wrap}
+.verification-actions button,.verification-pager button{height:38px;padding:0 14px;border:1px solid #cbd9d0;border-radius:9px;background:#fffefa;color:#244438;font:600 12px "DM Sans",sans-serif;cursor:pointer}
+.verification-actions #verification-export{border-color:#137c6c;background:#137c6c;color:#fff}
+.verification-actions button:disabled,.verification-pager button:disabled{opacity:.55;cursor:wait}
+.verification-method{margin:8px 2px 16px;color:#60756a;font-size:12px;line-height:1.5}
+.verification-office-panel{margin-bottom:16px}
+.verification-office-panel .sd-table-wrap{max-height:none}
+.verification-office-panel table{min-width:650px}
+.verification-office-panel td:nth-child(n+2){font-variant-numeric:tabular-nums}
+.verification-detail-panel{margin-bottom:15px}
+.verification-summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+.verification-detail-heading{align-items:center}
+.verification-filters{display:flex;align-items:end;gap:10px}
+.verification-filters label{display:grid;gap:5px;color:#607469;font-size:11px;font-weight:700}
+.verification-filters input,.verification-filters select{height:38px;min-width:180px;padding:8px 10px;border:1px solid #d1dcd5;border-radius:8px;background:#fff;color:#19372e;font:500 13px "DM Sans",sans-serif}
+.verification-filters select{min-width:130px}
+.verification-table-wrap{max-height:520px}
+.verification-table-wrap table{min-width:760px}
+.verification-table-wrap td:first-child{font-variant-numeric:tabular-nums;font-weight:650;color:#19392f}
+.verification-table-wrap table{min-width:1200px}
+.verification-amount{color:#176b5b;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.verification-sd-entries{margin:0 0 16px}
+.verification-sd-entries>summary{color:#18372e;font:600 20px Fraunces,Georgia,serif;cursor:pointer}
+.verification-sd-entries>summary span{margin-left:6px;color:#60756a;font:600 12px "DM Sans",sans-serif}
+.verification-sd-controls{display:flex;justify-content:space-between;align-items:end;gap:14px;margin:15px 0 10px}
+.verification-sd-controls p{margin:0;color:#718178;font-size:12px}
+.verification-sd-controls label{display:grid;gap:5px;min-width:min(340px,45%);color:#607469;font-size:11px;font-weight:700}
+.verification-sd-controls input{height:38px;padding:8px 11px;border:1px solid #d1dcd5;border-radius:8px;background:#fff;color:#19372e;font:500 13px "DM Sans",sans-serif}
+.verification-sd-table-wrap{max-height:520px}
+.verification-sd-table-wrap table{min-width:950px}
+.verification-status{display:inline-flex;padding:4px 9px;border-radius:99px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.verification-status.found{background:#dff2e8;color:#116547}
+.verification-status.missing{background:#fff0de;color:#965408}
+.verification-pager{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:12px;color:#65786e;font-size:12px}
+.verification-pager>div{display:flex;align-items:center;gap:10px}
+.verification-pager button{height:34px;padding:0 12px}
+@media(max-width:900px){.verification-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.verification-summary{grid-template-columns:1fr 1fr}.verification-actions,.verification-detail-heading{align-items:stretch;flex-direction:column}.verification-actions>div{display:grid;grid-template-columns:1fr 1fr}.verification-actions button{height:auto;min-height:40px;padding:8px}.verification-filters{display:grid;grid-template-columns:1fr 1fr}.verification-filters input,.verification-filters select{width:100%;min-width:0}.verification-sd-controls{align-items:stretch;flex-direction:column}.verification-sd-controls label{width:100%;min-width:0}.verification-pager{align-items:flex-start;flex-direction:column}.verification-pager>div{align-self:flex-end}}
