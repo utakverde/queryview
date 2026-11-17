@@ -9,21 +9,24 @@ const iso = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStar
 const officeColors = ['#d9604c', '#14a08a', '#8b6fd1', '#9bbd4a', '#cd6b9b', '#4e9caf', '#bd8750', '#66736f'];
 const officeColorByName = { catbalogan: '#d9604c', main: '#14a08a', basey: '#8b6fd1', villareal: '#9bbd4a' };
 const bankColor = '#4d7fd6', ecpayColor = '#f0a23b', svgNamespace = 'http://www.w3.org/2000/svg';
-let reportData = null, sourceFilter = 'all', sourceItems = [], sourceTotal = 0;
+let reportData = null, sourceFilter = 'all', sourceMetric = 'amount', sourceItems = [], sourceTotal = 0;
 
 function officeColor(name, index) { return officeColorByName[String(name).trim().toLowerCase()] || officeColors[index % officeColors.length]; }
 function collectionSources(data) {
-  const byOffice = new Map(); let bank = 0, ecpay = 0;
+  const byOffice = new Map(); let bank = 0, ecpay = 0, bankBills = 0, ecpayBills = 0;
   for (const row of data.rows || []) {
-    const amount = Number(row.amount || 0), bankName = String(row.bankName || '').trim().toUpperCase();
-    if (bankName === 'ECPAY') ecpay += amount;
-    else if (row.bankName) bank += amount;
-    else byOffice.set(row.database, (byOffice.get(row.database) || 0) + amount);
+    const amount = Number(row.amount || 0), bills = Number(row.bills || 0), bankName = String(row.bankName || '').trim().toUpperCase();
+    if (bankName === 'ECPAY') { ecpay += amount; ecpayBills += bills; }
+    else if (row.bankName) { bank += amount; bankBills += bills; }
+    else { const item = byOffice.get(row.database) || { amount: 0, bills: 0 }; item.amount += amount; item.bills += bills; byOffice.set(row.database, item); }
   }
-  const offices = [...byOffice].sort((a, b) => b[1] - a[1]).map(([name, value], index) => ({ name, type: 'office', value, color: officeColor(name, index), icon: 'office' }));
-  const channels = [{ name: 'Bank', type: 'channel', value: bank, color: bankColor, icon: 'bank' }, { name: 'ECPay', type: 'channel', value: ecpay, color: ecpayColor, icon: 'ecpay' }];
-  return { items: [...offices, ...channels].filter(item => item.value > 0), officeTotal: offices.reduce((sum, item) => sum + item.value, 0), channelTotal: bank + ecpay };
+  const offices = [...byOffice].map(([name, values], index) => ({ name, type: 'office', ...values, color: officeColor(name, index), icon: 'office' }));
+  const channels = [{ name: 'Bank', type: 'channel', amount: bank, bills: bankBills, color: bankColor, icon: 'bank' }, { name: 'ECPay', type: 'channel', amount: ecpay, bills: ecpayBills, color: ecpayColor, icon: 'ecpay' }];
+  const banks = (data.banks || []).map((row, index) => ({ name: row.bankName, type: 'bank', amount: Number(row.amount || 0), bills: Number(row.bills || 0), color: officeColors[index % officeColors.length], icon: 'bank' }));
+  return { offices, channels, banks };
 }
+function metricValue(item) { return Number(item[sourceMetric] || 0); }
+function metricFormat(value) { return sourceMetric === 'bills' ? `${number.format(value)} bills` : money.format(value); }
 function sourceIcon(kind) {
   if (kind === 'office') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5h10v15M14 10h6v10M2 20h20M7 8h4M7 11h4M7 14h4M7 17h4M17 13h1M17 16h1"/></svg>';
   if (kind === 'bank') return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 9 9-5 9 5M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18M2 22h20M4 9h16"/></svg>';
@@ -38,20 +41,25 @@ function setDonutCenter(item) {
     source.button?.setAttribute('aria-pressed', String(active));
   });
   $('#source-center-label').textContent = item ? item.name : (sourceFilter === 'all' ? 'Total collected' : sourceFilter === 'office' ? 'Office collections' : 'Channel collections');
-  $('#source-center-amount').textContent = money.format(item ? item.value : sourceTotal);
-  $('#source-center-percent').textContent = percent(item ? item.value / sourceTotal : 1);
+  $('#source-center-amount').textContent = metricFormat(item ? item.value : sourceTotal);
+  $('#source-center-percent').textContent = percent(item ? item.value / sourceTotal : (sourceTotal ? 1 : 0));
 }
 function renderSourceBreakdown(data) {
-  const grouped = collectionSources(data), allTotal = Number(data.totals.amount || 0);
-  sourceItems = grouped.items.filter(item => sourceFilter === 'all' || item.type === sourceFilter).sort((a, b) => b.value - a.value);
+  const grouped = collectionSources(data), allTotal = sourceMetric === 'bills' ? Number(data.totals.bills || 0) : Number(data.totals.amount || 0);
+  const offices = grouped.offices.map(item => ({ ...item, value: metricValue(item) }));
+  const channels = grouped.channels.map(item => ({ ...item, value: metricValue(item) }));
+  const banks = grouped.banks.map(item => ({ ...item, value: metricValue(item) }));
+  const allItems = sourceFilter === 'bank' ? banks : [...offices, ...channels];
+  sourceItems = allItems.filter(item => (sourceFilter === 'all' || item.type === sourceFilter) && item.value > 0).sort((a, b) => b.value - a.value);
   sourceTotal = sourceItems.reduce((sum, item) => sum + item.value, 0);
   const top = sourceItems[0];
-  const officeShare = sourceFilter === 'channel' ? 0 : sourceFilter === 'office' ? 1 : (allTotal ? grouped.officeTotal / allTotal : 0);
-  const channelShare = sourceFilter === 'office' ? 0 : sourceFilter === 'channel' ? 1 : (allTotal ? grouped.channelTotal / allTotal : 0);
+  const officeTotal = offices.reduce((sum, item) => sum + item.value, 0), channelTotal = channels.reduce((sum, item) => sum + item.value, 0);
+  const officeShare = sourceFilter === 'channel' ? 0 : sourceFilter === 'office' ? 1 : (allTotal ? officeTotal / allTotal : 0);
+  const channelShare = sourceFilter === 'office' ? 0 : sourceFilter === 'channel' ? 1 : (allTotal ? channelTotal / allTotal : 0);
   $('#collector-metrics').innerHTML = [
-    [sourceFilter === 'all' ? 'Total collected' : 'Selected total', money.format(sourceTotal), `${sourceItems.length} sources`],
-    ['Top source', top?.name || '—', top ? `${percent(top.value / (sourceTotal || 1))} · ${money.format(top.value)}` : 'No collections'],
-    ['Offices vs. channels', `${(officeShare * 100).toFixed(1)}% / ${(channelShare * 100).toFixed(1)}%`, 'Office collection share / payment channels']
+    [sourceMetric === 'bills' ? (sourceFilter === 'all' ? 'Total bills' : 'Selected bills') : (sourceFilter === 'all' ? 'Total collected' : 'Selected total'), metricFormat(sourceTotal), `${sourceItems.length} sources`],
+    ['Top source', top?.name || '—', top ? `${percent(top.value / (sourceTotal || 1))} · ${metricFormat(top.value)}` : 'No collections'],
+    [sourceFilter === 'bank' ? 'Banks shown' : sourceMetric === 'bills' ? 'Office vs. channel bills' : 'Offices vs. channels', sourceFilter === 'bank' ? `${sourceItems.length} banks` : `${(officeShare * 100).toFixed(1)}% / ${(channelShare * 100).toFixed(1)}%`, sourceFilter === 'bank' ? 'Each bank is shown as a separate source' : sourceMetric === 'bills' ? 'Share of paid bills by source type' : 'Office collection share / payment channels']
   ].map(([label, value, detail]) => `<article><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(detail)}</small></article>`).join('');
 
   const svg = $('#source-svg'), radius = 82, circumference = 2 * Math.PI * radius;
@@ -65,15 +73,15 @@ function renderSourceBreakdown(data) {
     circle.setAttribute('stroke', item.color); circle.setAttribute('transform', 'rotate(-90 100 100)');
     circle.setAttribute('class', 'source-segment'); circle.setAttribute('stroke-dasharray', `0 ${circumference}`);
     circle.setAttribute('stroke-dashoffset', String(-offset)); circle.setAttribute('tabindex', '0'); circle.setAttribute('role', 'button');
-    circle.setAttribute('aria-label', `${item.name}, ${money.format(item.value)}, ${percent(item.share)}`);
+    circle.setAttribute('aria-label', `${item.name}, ${metricFormat(item.value)}, ${percent(item.share)}`);
     svg.appendChild(circle); item.circle = circle;
     requestAnimationFrame(() => requestAnimationFrame(() => circle.setAttribute('stroke-dasharray', `${visibleLength} ${circumference}`)));
     offset += length;
     circle.addEventListener('mouseenter', () => setDonutCenter(item)); circle.addEventListener('mouseleave', () => setDonutCenter(null));
     circle.addEventListener('focus', () => setDonutCenter(item)); circle.addEventListener('blur', () => setDonutCenter(null));
   });
-  svg.setAttribute('aria-label', `Collections by source. ${money.format(total)}, ${percent(total ? 1 : 0)} of the selected total.`);
-  $('#source-list').innerHTML = sourceItems.map(item => `<button class="source-row" type="button" aria-pressed="false"><span class="source-icon" data-icon="${item.icon}" style="--source-color:${item.color}">${sourceIcon(item.icon)}</span><span class="source-name"><span class="name">${escapeHtml(item.name)}</span><span class="type">${item.type === 'office' ? 'Office collection' : item.name === 'ECPay' ? 'Mobile payment channel' : 'Payment channel'}</span></span><span class="source-values"><span class="amount">${money.format(item.value)}</span><span class="share">${percent(item.share)}</span></span><span class="source-bar"><i style="width:0;background:${item.color}"></i></span></button>`).join('') || '<p class="collector-chart-empty">No collections in this period.</p>';
+  svg.setAttribute('aria-label', `${sourceMetric === 'bills' ? 'Bills' : 'Collections'} by source. ${metricFormat(total)}, ${percent(total ? 1 : 0)} of the selected total.`);
+  $('#source-list').innerHTML = sourceItems.map(item => `<button class="source-row" type="button" aria-pressed="false"><span class="source-icon" data-icon="${item.icon}" style="--source-color:${item.color}">${sourceIcon(item.icon)}</span><span class="source-name"><span class="name">${escapeHtml(item.name)}</span><span class="type">${item.type === 'office' ? 'Office collection' : item.name === 'ECPay' ? 'Mobile payment channel' : 'Payment channel'}</span></span><span class="source-values"><span class="amount">${sourceMetric === 'bills' ? number.format(item.value) + ' bills' : money.format(item.value)}</span><span class="share">${percent(item.share)}</span></span><span class="source-bar"><i style="width:0;background:${item.color}"></i></span></button>`).join('') || '<p class="collector-chart-empty">No collections in this period.</p>';
   [...$('#source-list').querySelectorAll('.source-row')].forEach((button, index) => {
     const item = sourceItems[index]; item.button = button;
     button.addEventListener('mouseenter', () => setDonutCenter(item)); button.addEventListener('mouseleave', () => setDonutCenter(null));
@@ -140,5 +148,11 @@ $('#source-tabs').addEventListener('click', event => {
   const button = event.target.closest('button[data-filter]'); if (!button || !reportData) return;
   sourceFilter = button.dataset.filter;
   $('#source-tabs').querySelectorAll('button').forEach(item => { const active = item === button; item.classList.toggle('on', active); item.setAttribute('aria-selected', String(active)); });
+  renderSourceBreakdown(reportData);
+});
+$('#source-metric-tabs').addEventListener('click', event => {
+  const button = event.target.closest('button[data-metric]'); if (!button || !reportData) return;
+  sourceMetric = button.dataset.metric;
+  $('#source-metric-tabs').querySelectorAll('button').forEach(item => { const active = item === button; item.classList.toggle('on', active); item.setAttribute('aria-pressed', String(active)); });
   renderSourceBreakdown(reportData);
 });

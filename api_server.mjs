@@ -1642,6 +1642,26 @@ const server=http.createServer(async(req,res)=>{
       if(!validDates||(database!=='all'&&!allowed.has(database))||!['all','regular','bapa'].includes(group))return json(res,400,{error:'Choose a valid paid-date range, office, and bill source.'});
       try{return json(res,200,await buildItdataRexCollection(from,to,database,group))}catch(error){console.error('REX collection report:',error);return json(res,500,{error:error.message||'Unable to load REX collection from the configured billing databases.'})}
     }
+    if(u.pathname==='/api/itdata/billhistory-ledger'&&req.method==='GET'){
+      const area=(u.searchParams.get('area')??'').trim(),page=Number(u.searchParams.get('page')??'1'),pageSize=200,view=u.searchParams.get('view')??'ledger';
+      if(!/^[A-Za-z0-9_-]{1,10}$/.test(area)||!Number.isInteger(page)||page<1||page>10000||!['ledger','summary'].includes(view))return json(res,400,{error:'Enter a valid area code and page.'});
+      try{
+        if(view==='summary'){
+          const results=await Promise.all(databases.map(async office=>{
+            const offset=(page-1)*pageSize,sql=`SELECT '${escapeSql(office.label)}',h.AccountNumber,h.Name,h.Area,h.Book,COUNT(*),COALESCE(SUM(h.KilowattHour),0),COALESCE(SUM(h.TotalBill),0) FROM billhistory h WHERE h.Area='${escapeSql(area)}' GROUP BY h.AccountNumber,h.Name,h.Area,h.Book ORDER BY h.AccountNumber LIMIT ${offset},${pageSize+1}`;
+            const rows=parse(await sqlAsync(office.database,sql),['office','accountNumber','name','area','book','billCount','totalKwh','totalBill']);
+            return {rows:rows.slice(0,pageSize),hasMore:rows.length>pageSize};
+          }));
+          return json(res,200,{area,page,pageSize,rows:results.flatMap(result=>result.rows),hasMore:results.some(result=>result.hasMore),generatedAt:new Date().toISOString()});
+        }
+        const results=await Promise.all(databases.map(async office=>{
+          const offset=(page-1)*pageSize,sql=`SELECT '${escapeSql(office.label)}',h.AccountNumber,h.Name,h.RateCode,h.Address,h.Area,h.Book,h.BillMonth,h.TotalBill,h.Multiplier,h.KilowattHour,h.Serial,COALESCE((SELECT u.FullName FROM tblusers u WHERE u.UserID=h.collector_code LIMIT 1),'') FROM billhistory h WHERE h.Area='${escapeSql(area)}' ORDER BY h.AccountNumber,RIGHT(h.BillMonth,2) ASC,LEFT(h.BillMonth,2) ASC LIMIT ${offset},${pageSize+1}`;
+          const rows=parse(await sqlAsync(office.database,sql),['office','accountNumber','name','rateCode','address','area','book','billMonth','totalBill','multiplier','kwh','serial','collector']);
+          return {rows:rows.slice(0,pageSize),hasMore:rows.length>pageSize};
+        }));
+        return json(res,200,{area,page,pageSize,rows:results.flatMap(result=>result.rows),hasMore:results.some(result=>result.hasMore),generatedAt:new Date().toISOString()});
+      }catch(error){console.error('Billhistory area ledger:',error);return json(res,500,{error:'Unable to generate the area ledger from all configured billing databases.'})}
+    }
     if(u.pathname==='/api/itdata/bapa-reports'&&req.method==='GET'){
       try{return json(res,200,await bapaReport(databases,sqlAsync))}catch(error){console.error('BAPA reports:',error);return json(res,500,{error:'Unable to load BAPA reports from all four billing databases. Check the billing connection and try again.'})}
     }
@@ -1676,7 +1696,7 @@ const server=http.createServer(async(req,res)=>{
       if(req.method!=='GET'){res.setHeader('Allow','GET');return json(res,405,{error:'This report supports read-only GET requests.'})}
       try{return json(res,200,await itDataReport(u.searchParams))}catch(error){console.error('IT data report:',error.message);return json(res,400,{error:itProgramConnection.enabled?'Unable to load IT data. Check the saved IT connection and usertb table.':'Enable the optional IT Program connection in Database Settings first.'})}
     }
-    if(req.method==='GET'&&['/itdata','/itdata.html','/itdata.js','/itdata.css','/bapa-excel.js','/senior-xlsx.js','/account-numbers-xlsx.js'].includes(u.pathname))return staticFile(res,path.join(webDir,u.pathname==='/itdata'?'itdata.html':u.pathname.slice(1)));
+    if(req.method==='GET'&&['/itdata','/itdata.html','/itdata.js','/itdata.css','/bapa-excel.js','/senior-xlsx.js','/account-numbers-xlsx.js','/billhistory-ledger-xlsx.js'].includes(u.pathname))return staticFile(res,path.join(webDir,u.pathname==='/itdata'?'itdata.html':u.pathname.slice(1)));
     if(req.method==='GET'&&['/theme.css','/theme.js'].includes(u.pathname))return staticFile(res,path.join(webDir,u.pathname.slice(1)));
     if(req.method==="GET"&&u.pathname==="/api/health")return json(res,200,{ok:true,service:"consumer-reports",reports:reports.length+3,portableStorage:"sqlite",sqliteFile:"portable_data/reporting_cache.sqlite"});
     if(req.method==="GET"&&u.pathname==="/api/connection-settings")return json(res,200,publicConnectionSettings());
